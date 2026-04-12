@@ -86,8 +86,7 @@ class VditorRenew_Plugin implements PluginInterface
                 'emoji' => _t('启用表情输入'),
                 'localCache' => _t('启用浏览器本地草稿缓存（推荐）'),
                 'followTheme' => _t('跟随 Renew UI 深浅主题'),
-                'hljs' => _t('启用代码高亮'),
-                'typechoCache' => _t('启用 TypeRenew 缓存配置快照')
+                'hljs' => _t('启用代码高亮')
             ],
             $featureValues,
             _t('功能开关')
@@ -127,15 +126,6 @@ class VditorRenew_Plugin implements PluginInterface
         );
         $form->addInput($full);
 
-        $ttl = new Form\Element\Number(
-            'cacheTtl',
-            null,
-            (int) $defaults['cacheTtl'],
-            _t('配置缓存秒数')
-        );
-        $ttl->input->setAttribute('class', 'w-20');
-        $form->addInput($ttl->addRule('isInteger', _t('请填入一个数字')));
-
         $toolbar = new Form\Element\Textarea(
             'toolbar',
             null,
@@ -162,14 +152,12 @@ class VditorRenew_Plugin implements PluginInterface
                 'emoji' => $normalized['emoji'],
                 'localCache' => $normalized['localCache'],
                 'followTheme' => $normalized['followTheme'],
-                'hljs' => $normalized['hljs'],
-                'typechoCache' => $normalized['typechoCache']
+                'hljs' => $normalized['hljs']
             ])),
             'lang' => $normalized['lang'],
             'icon' => $normalized['icon'],
             'editorHeight' => (string) $normalized['editorHeight'],
             'fullStrategy' => $normalized['fullStrategy'],
-            'cacheTtl' => (string) $normalized['cacheTtl'],
             'toolbar' => $normalized['toolbar']
         ];
 
@@ -236,7 +224,6 @@ class VditorRenew_Plugin implements PluginInterface
                 'icon' => (string) $merged['icon'],
                 'editorHeight' => (string) $merged['editorHeight'],
                 'fullStrategy' => (string) $merged['fullStrategy'],
-                'cacheTtl' => (string) $merged['cacheTtl'],
                 'toolbar' => (string) $merged['toolbar']
             ]);
         } catch (Throwable $e) {
@@ -250,12 +237,11 @@ class VditorRenew_Plugin implements PluginInterface
             'enabled' => 1,
             'mode' => 'ir',
             'legacy' => 'convert',
-            'features' => ['modeSwitch', 'outline', 'counter', 'emoji', 'localCache', 'followTheme', 'typechoCache'],
+            'features' => ['modeSwitch', 'outline', 'counter', 'emoji', 'localCache', 'followTheme'],
             'lang' => 'zh_CN',
             'icon' => 'ant',
             'editorHeight' => 520,
             'fullStrategy' => 'compat',
-            'cacheTtl' => 300,
             'toolbar' => ''
         ];
     }
@@ -270,7 +256,7 @@ class VditorRenew_Plugin implements PluginInterface
         if (!empty($featureSet)) {
             $sortedFeatures = array_values(array_filter(array_map('strval', $featureSet)));
             sort($sortedFeatures, SORT_STRING);
-            $legacyDefault = ['counter', 'emoji', 'followTheme', 'modeSwitch', 'outline', 'typechoCache'];
+            $legacyDefault = ['counter', 'emoji', 'followTheme', 'modeSwitch', 'outline'];
             sort($legacyDefault, SORT_STRING);
             if ($sortedFeatures === $legacyDefault) {
                 $featureSet[] = 'localCache';
@@ -331,12 +317,10 @@ class VditorRenew_Plugin implements PluginInterface
             'localCache' => $featureOn('localCache'),
             'followTheme' => $featureOn('followTheme'),
             'hljs' => $featureOn('hljs'),
-            'typechoCache' => $featureOn('typechoCache'),
             'lang' => $lang,
             'icon' => $icon,
             'editorHeight' => max(420, min(1200, (int) ($settings['editorHeight'] ?? 520))),
             'fullStrategy' => $fullStrategy,
-            'cacheTtl' => max(60, min(86400, (int) ($settings['cacheTtl'] ?? 300))),
             'toolbar' => $toolbar
         ];
     }
