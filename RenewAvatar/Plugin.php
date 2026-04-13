@@ -296,7 +296,7 @@ class RenewAvatar_Plugin implements PluginInterface
 
     private static function request(string $url, int $timeout): string
     {
-        $parts = @parse_url($url);
+        $parts = parse_url($url);
         $host = is_array($parts) ? (string) ($parts['host'] ?? '') : '';
         if ($host === '' || strcasecmp($host, 'ptlogin2.qq.com') !== 0) {
             return '';
@@ -342,7 +342,14 @@ class RenewAvatar_Plugin implements PluginInterface
             ],
             'ssl' => ['verify_peer' => true, 'verify_peer_name' => true]
         ]);
-        $body = @file_get_contents($url, false, $ctx);
+        set_error_handler(static function (): bool {
+            return true;
+        });
+        try {
+            $body = file_get_contents($url, false, $ctx);
+        } finally {
+            restore_error_handler();
+        }
         return is_string($body) ? $body : '';
     }
 

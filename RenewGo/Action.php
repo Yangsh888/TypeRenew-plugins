@@ -44,18 +44,15 @@ class RenewGo_Action extends Typecho_Widget
     {
         $settings = RenewGo_Plugin::getSettings();
         $encoded = trim((string) $this->request->get('target', ''));
-        $decoded = RenewGo_Plugin::decodeTarget($encoded);
-        $url = RenewGo_Plugin::normalizeUrl($decoded);
+        ['decoded' => $decoded, 'url' => $url] = $this->resolveTarget($encoded);
 
         if ($url === '') {
-            RenewGo_Plugin::logEvent('go', 'invalid', $decoded, (string) $this->request->getReferer());
-            $this->renderError(_t('链接无效或已损坏'));
+            $this->failPage('go', 'invalid', $decoded, _t('链接无效或已损坏'));
             return;
         }
 
         if ($settings['mode'] === 'off') {
-            RenewGo_Plugin::logEvent('go', 'disabled', $url, (string) $this->request->getReferer());
-            $this->renderError(_t('外链跳转功能已关闭'));
+            $this->failPage('go', 'disabled', $url, _t('外链跳转功能已关闭'));
             return;
         }
 
@@ -63,21 +60,15 @@ class RenewGo_Action extends Typecho_Widget
             if ((string) ($settings['directWhitelistOnly'] ?? '1') === '1') {
                 $whitelist = trim((string) ($settings['whitelist'] ?? ''));
                 if ($whitelist === '') {
-                    RenewGo_Plugin::logEvent('go', 'no-whitelist', $url, (string) $this->request->getReferer(), true);
-                    $this->renderError(_t('直跳模式未配置白名单，请联系管理员'));
+                    $this->failPage('go', 'no-whitelist', $url, _t('直跳模式未配置白名单，请联系管理员'), 200, true);
                     return;
                 }
                 if (!RenewGo_Plugin::isWhitelisted($url, $settings)) {
-                    RenewGo_Plugin::logEvent('go', 'direct-denied', $url, (string) $this->request->getReferer(), true);
-                    $this->renderError(_t('该外链未在直跳白名单中'));
+                    $this->failPage('go', 'direct-denied', $url, _t('该外链未在直跳白名单中'), 200, true);
                     return;
                 }
             }
-            $ip = (string) $this->request->getIp();
-            if (!RenewGo_Plugin::checkRateLimit($ip, $settings)) {
-                RenewGo_Plugin::logEvent('go', 'rate-limit', $url, (string) $this->request->getReferer(), true);
-                $this->response->setStatus(429);
-                $this->renderError(_t('访问过于频繁，请稍后重试'));
+            if (!$this->enforceRateLimit($settings, 'go', $url)) {
                 return;
             }
             RenewGo_Plugin::logEvent('go', 'redirect', $url, (string) $this->request->getReferer(), true);
@@ -116,25 +107,17 @@ class RenewGo_Action extends Typecho_Widget
         $time = (int) $this->request->get('ts');
         $sign = (string) $this->request->get('sig');
         if (!RenewGo_Plugin::verifySign($encoded, $time, $sign)) {
-            RenewGo_Plugin::logEvent('jump', 'forbidden', '', (string) $this->request->getReferer(), true);
-            $this->response->setStatus(403);
-            $this->renderError(_t('链接校验失败'));
+            $this->failPage('jump', 'forbidden', '', _t('链接校验失败'), 403, true);
             return;
         }
 
-        $decoded = RenewGo_Plugin::decodeTarget($encoded);
-        $url = RenewGo_Plugin::normalizeUrl($decoded);
+        ['decoded' => $decoded, 'url' => $url] = $this->resolveTarget($encoded);
         if ($url === '') {
-            RenewGo_Plugin::logEvent('jump', 'invalid', $decoded, (string) $this->request->getReferer(), true);
-            $this->renderError(_t('链接无效或已损坏'));
+            $this->failPage('jump', 'invalid', $decoded, _t('链接无效或已损坏'), 200, true);
             return;
         }
 
-        $ip = (string) $this->request->getIp();
-        if (!RenewGo_Plugin::checkRateLimit($ip, $settings)) {
-            RenewGo_Plugin::logEvent('jump', 'rate-limit', $url, (string) $this->request->getReferer(), true);
-            $this->response->setStatus(429);
-            $this->renderError(_t('访问过于频繁，请稍后重试'));
+        if (!$this->enforceRateLimit($settings, 'jump', $url)) {
             return;
         }
 
@@ -243,6 +226,42 @@ class RenewGo_Action extends Typecho_Widget
             $site = $scheme . $host . '/';
         }
         return rtrim($site, '/') . '/';
+    }
+
+    private function resolveTarget(string $encoded): array
+    {
+        $decoded = RenewGo_Plugin::decodeTarget($encoded);
+
+        return [
+            'decoded' => $decoded,
+            'url' => RenewGo_Plugin::normalizeUrl($decoded)
+        ];
+    }
+
+    private function enforceRateLimit(array $settings, string $scope, string $url): bool
+    {
+        $ip = (string) $this->request->getIp();
+        if (RenewGo_Plugin::checkRateLimit($ip, $settings)) {
+            return true;
+        }
+
+        $this->failPage($scope, 'rate-limit', $url, _t('访问过于频繁，请稍后重试'), 429, true);
+        return false;
+    }
+
+    private function failPage(
+        string $scope,
+        string $result,
+        string $target,
+        string $message,
+        int $status = 200,
+        bool $force = false
+    ): void {
+        RenewGo_Plugin::logEvent($scope, $result, $target, (string) $this->request->getReferer(), $force);
+        if ($status !== 200) {
+            $this->response->setStatus($status);
+        }
+        $this->renderError($message);
     }
 
     private function jsonError(string $message, int $status, string $code): void
