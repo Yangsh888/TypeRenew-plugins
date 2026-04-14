@@ -99,9 +99,9 @@ class Action extends \Typecho\Widget
         ];
         $data = array_merge($data, $this->request->from('enabled', 'cacheTtl', 'panelSize', 'logKeepDays', 'notFoundKeepDays', 'logAutoClean', 'pushAsync', 'pushTimeout', 'robotsEnable', 'robotsDefault', 'robotsMode', 'robotsAllowed', 'robotsDenied', 'robotsBlocked', 'robotsExtra', 'robotsSitemap', 'robotsCustomSitemaps', 'sitemapEnable', 'sitemapTxt', 'sitemapSplit', 'sitemapDebounce', 'sitemapPage', 'sitemapCategory', 'sitemapTag', 'sitemapAuthor', 'sitemapPriorityHome', 'sitemapPriorityPost', 'sitemapPriorityPage', 'sitemapPriorityCategory', 'sitemapPriorityTag', 'sitemapPriorityAuthor', 'sitemapFreqHome', 'sitemapFreqPost', 'sitemapFreqPage', 'sitemapFreqTaxonomy', 'ogEnable', 'ogDefaultImage', 'timeEnable', 'canonicalEnable', 'canonicalStrip', 'noindexSearch', 'noindex404', 'altEnable', 'altTemplate', 'baiduEnable', 'baiduToken', 'baiduQuick', 'baiduDays', 'baiduPushOnEdit', 'indexNowEnable', 'indexNowKey', 'indexNowKeyPath', 'indexNowOnEdit', 'bingEnable', 'bingApiKey', 'bingOnEdit'));
         $next = Settings::normalize(array_merge($previous, $data));
-        Files::cleanupTransition($previous, $next);
         Settings::store($next);
         Files::sync('save', true);
+        Files::cleanupTransition($previous, $next);
         $this->success('SEO 设置已保存并同步文件');
     }
 

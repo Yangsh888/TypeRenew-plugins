@@ -44,8 +44,12 @@ class RenewGo_Plugin implements PluginInterface
     {
         self::createTables();
         self::registerHooks();
-        self::registerRoutes();
-        self::registerPanel();
+        Helper::removeRoute('renew_go');
+        Helper::removeRoute('renew_go_action');
+        Helper::addRoute('renew_go', '/go/[target]', 'RenewGo_Action', 'go');
+        Helper::addRoute('renew_go_action', '/action/renew-go', 'RenewGo_Action', 'action');
+        Helper::removePanel(3, 'RenewGo/Panel.php');
+        Helper::addPanel(3, 'RenewGo/Panel.php', '外链安全', '外链安全', 'administrator');
         self::ensureConfigStored();
         self::clearConfigCache();
         return _t('RenewGo 已启用');
@@ -53,8 +57,9 @@ class RenewGo_Plugin implements PluginInterface
 
     public static function deactivate()
     {
-        self::unregisterRoutes();
-        self::unregisterPanel();
+        Helper::removeRoute('renew_go');
+        Helper::removeRoute('renew_go_action');
+        Helper::removePanel(3, 'RenewGo/Panel.php');
         self::clearConfigCache();
     }
 
@@ -225,31 +230,6 @@ class RenewGo_Plugin implements PluginInterface
         \Typecho\Plugin::factory('Widget\\Base\\Comments')->filter = ['RenewGo_Plugin', 'rewriteAuthorUrl'];
         \Typecho\Plugin::factory('Widget\\Archive')->header = ['RenewGo_Plugin', 'startBuffer'];
         \Typecho\Plugin::factory('Widget\\Archive')->footer = ['RenewGo_Plugin', 'endBuffer'];
-    }
-
-    public static function registerRoutes(): void
-    {
-        Helper::removeRoute('renew_go');
-        Helper::removeRoute('renew_go_action');
-        Helper::addRoute('renew_go', '/go/[target]', 'RenewGo_Action', 'go');
-        Helper::addRoute('renew_go_action', '/action/renew-go', 'RenewGo_Action', 'action');
-    }
-
-    public static function unregisterRoutes(): void
-    {
-        Helper::removeRoute('renew_go');
-        Helper::removeRoute('renew_go_action');
-    }
-
-    public static function registerPanel(): void
-    {
-        Helper::removePanel(3, 'RenewGo/Panel.php');
-        Helper::addPanel(3, 'RenewGo/Panel.php', '外链安全', '外链安全', 'administrator');
-    }
-
-    public static function unregisterPanel(): void
-    {
-        Helper::removePanel(3, 'RenewGo/Panel.php');
     }
 
     public static function getSettings(): array

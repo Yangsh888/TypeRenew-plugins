@@ -6,6 +6,8 @@ if (!defined('__TYPECHO_ROOT_DIR__')) {
 class RenewGo_Action extends Typecho_Widget
 {
     private const MAX_JSON_SIZE = 32768;
+    private const CLEANUP_INTERVAL = 3600;
+    private const CLEANUP_LOCK_TTL = 60;
 
     public function action()
     {
@@ -292,8 +294,9 @@ class RenewGo_Action extends Typecho_Widget
     {
         $cache = \Typecho\Cache::getInstance();
         $cacheKey = 'renewgo:last_cleanup';
+        $lockKey = 'renewgo:cleanup_lock';
         $now = time();
-        $interval = 3600;
+        $interval = self::CLEANUP_INTERVAL;
 
         if ($cache->enabled()) {
             $hit = false;
@@ -301,13 +304,22 @@ class RenewGo_Action extends Typecho_Widget
             if ($hit && ($now - $lastCleanup) < $interval) {
                 return;
             }
-            $cache->set($cacheKey, $now, $interval * 2);
+
+            if (!$cache->set($lockKey, $now, self::CLEANUP_LOCK_TTL)) {
+                return;
+            }
         }
 
         try {
             RenewGo_Plugin::cleanupLogs($keepDays);
-        } catch (\Throwable $e) {
-            error_log('[RenewGo] cleanupLogs: ' . $e->getMessage());
+            if ($cache->enabled()) {
+                $cache->set($cacheKey, $now, $interval * 2);
+            }
+        } catch (\Throwable) {
+        } finally {
+            if ($cache->enabled()) {
+                $cache->delete($lockKey);
+            }
         }
     }
 }

@@ -5,8 +5,10 @@ namespace TypechoPlugin\RenewSEO;
 
 use Typecho\Cache;
 use Typecho\Common;
+use Typecho\Plugin\Exception as PluginException;
 use Utils\Helper;
 use Utils\Pref;
+use Widget\Options;
 
 if (!defined('__TYPECHO_ROOT_DIR__')) {
     exit;
@@ -25,14 +27,7 @@ class Settings
             self::$runtime,
             self::CACHE_KEY,
             self::defaults(),
-            static function (): array {
-                try {
-                    return (array) Helper::options()->plugin(self::NAME)->toArray();
-                } catch (\Throwable $e) {
-                    self::report('load.read', $e);
-                    return [];
-                }
-            },
+            static fn(): array => self::readStored('load.read'),
             [self::class, 'normalize'],
             [self::class, 'ensureStored'],
             [self::class, 'report']
@@ -190,14 +185,7 @@ class Settings
 
     public static function ensureStored(): void
     {
-        $raw = [];
-        try {
-            $raw = (array) Helper::options()->plugin(self::NAME)->toArray();
-        } catch (\Throwable $e) {
-            $raw = [];
-            self::report('ensureStored.read', $e);
-        }
-
+        $raw = self::readStored('ensureStored.read');
         \Widget\Plugins\Edit::configPlugin(self::NAME, self::normalize(array_merge(self::defaults(), $raw)));
         self::clear();
     }
@@ -206,6 +194,7 @@ class Settings
     {
         Pref::clear(self::CACHE_KEY, [self::class, 'report']);
         self::$runtime = null;
+        Options::destroy();
     }
 
     public static function options()
@@ -255,11 +244,6 @@ class Settings
     public static function siteUrl(): string
     {
         return rtrim((string) self::options()->siteUrl, '/') . '/';
-    }
-
-    public static function indexUrl(): string
-    {
-        return rtrim((string) self::options()->index, '/') . '/';
     }
 
     public static function siteHost(): string
@@ -326,12 +310,6 @@ class Settings
         return $key . '.txt';
     }
 
-    public static function keyUrl(array $settings): string
-    {
-        $relative = self::keyRelativePath($settings);
-        return $relative === '' ? '' : self::rootUrl($relative);
-    }
-
     public static function report(string $scope, \Throwable $e): void
     {
         try {
@@ -339,6 +317,18 @@ class Settings
                 'class' => get_class($e)
             ]);
         } catch (\Throwable $ignored) {
+        }
+    }
+
+    private static function readStored(string $scope): array
+    {
+        try {
+            return (array) Helper::options()->plugin(self::NAME)->toArray();
+        } catch (PluginException $e) {
+            return [];
+        } catch (\Throwable $e) {
+            self::report($scope, $e);
+            return [];
         }
     }
 

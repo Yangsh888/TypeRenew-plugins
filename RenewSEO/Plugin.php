@@ -8,6 +8,7 @@ use Typecho\Plugin\PluginInterface;
 use Typecho\Widget\Helper\Form;
 use Typecho\Widget\Helper\Form\Element\Fake;
 use Utils\Helper;
+use Utils\NoPersonal;
 
 if (!defined('__TYPECHO_ROOT_DIR__')) {
     exit;
@@ -23,6 +24,8 @@ if (!defined('__TYPECHO_ROOT_DIR__')) {
  */
 class Plugin implements PluginInterface
 {
+    use NoPersonal;
+
     private static array $stash = [];
 
     public static function activate(): string
@@ -68,10 +71,6 @@ class Plugin implements PluginInterface
             $fake->input->setAttribute('style', 'display:none');
             $form->addInput($fake);
         }
-    }
-
-    public static function personalConfig(Form $form): void
-    {
     }
 
     public static function configHandle(array $settings, bool $_isInit): void

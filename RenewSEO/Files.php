@@ -15,12 +15,11 @@ class Files
 {
     private static bool $checked = false;
 
-    public static function sync(string $reason = 'manual', bool $force = false): array
+    public static function sync(string $reason = 'manual', bool $force = false, bool $writeInfoLog = true): array
     {
         $settings = Settings::load();
         if (($settings['enabled'] ?? '1') !== '1') {
             self::removeGenerated($settings);
-            self::storeStateStamp($settings);
             return $force ? ['ok' => true, 'disabled' => true] : ['ok' => false, 'message' => 'plugin disabled'];
         }
 
@@ -68,8 +67,9 @@ class Files
             }
 
             Settings::cache()->set('renewseo:last_sync', time(), 86400);
-            self::storeStateStamp($settings);
-            Log::write('file', 'sync', 'info', $reason, 'SEO 文件已同步', $result);
+            if ($writeInfoLog) {
+                Log::write('file', 'sync', 'info', $reason, 'SEO 文件已同步', $result);
+            }
             return ['ok' => true] + $result;
         } catch (\Throwable $e) {
             Log::write('file', 'sync', 'error', $reason, $e->getMessage());
@@ -89,25 +89,18 @@ class Files
 
         self::$checked = true;
         $cache = Settings::cache();
-        if (!$cache->enabled()) {
-            return;
-        }
 
         try {
             $settings = Settings::load();
-            $current = self::stateStamp($settings);
-            $hit = false;
-            $stored = (string) $cache->get('renewseo:last_state', $hit);
-
-            if ($hit && $stored !== '' && hash_equals($stored, $current)) {
+            if (($settings['enabled'] ?? '1') !== '1') {
                 return;
             }
 
-            if (($settings['enabled'] ?? '1') === '1' && !self::shouldSyncNow($settings)) {
+            if (self::hasExpectedFiles($settings)) {
                 return;
             }
 
-            $result = self::sync($reason, true);
+            $result = self::sync($reason, true, false);
             if (empty($result['ok']) && empty($result['disabled'])) {
                 Log::write('file', 'syncIfNeeded', 'notice', $reason, (string) ($result['message'] ?? 'sync skipped'));
             }
@@ -237,6 +230,33 @@ class Files
         }
 
         return $result;
+    }
+
+    private static function hasExpectedFiles(array $settings): bool
+    {
+        if (($settings['robotsEnable'] ?? '1') === '1' && !is_file(Settings::rootPath('robots.txt'))) {
+            return false;
+        }
+
+        if (($settings['sitemapEnable'] ?? '1') === '1' && !is_file(Settings::rootPath('sitemap.xml'))) {
+            return false;
+        }
+
+        if (($settings['sitemapEnable'] ?? '1') === '1'
+            && ($settings['sitemapTxt'] ?? '1') === '1'
+            && !is_file(Settings::rootPath('sitemap.txt'))
+        ) {
+            return false;
+        }
+
+        if (($settings['indexNowEnable'] ?? '0') === '1' && !empty($settings['indexNowKey'])) {
+            $relative = Settings::keyRelativePath($settings);
+            if ($relative !== '' && !is_file(Settings::rootPath($relative))) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public static function contentItem(int $cid): ?array
@@ -592,64 +612,4 @@ class Files
         return $items;
     }
 
-    private static function stateStamp(array $settings): string
-    {
-        $db = Db::get();
-        $content = $db->fetchObject(
-            $db->select([
-                'COUNT(*)' => 'total',
-                'MAX(cid)' => 'max_cid',
-                'MAX(created)' => 'max_created',
-                'MAX(modified)' => 'max_modified',
-            ])->from('table.contents')
-                ->where('status = ? AND type IN (?, ?)', 'publish', 'post', 'page')
-        );
-        $metas = $db->fetchAll(
-            $db->select('mid', 'slug', 'parent', 'type', 'count')
-                ->from('table.metas')
-                ->where('type IN (?, ?) AND count > 0', 'category', 'tag')
-                ->order('mid', Db::SORT_ASC)
-        );
-
-        $state = [
-            'enabled' => (string) ($settings['enabled'] ?? '1'),
-            'siteUrl' => Settings::siteUrl(),
-            'indexUrl' => Settings::indexUrl(),
-            'frontPage' => (string) (Settings::options()->frontPage ?? ''),
-            'frontArchive' => (string) (Settings::options()->frontArchive ?? ''),
-            'routingTable' => Settings::options()->routingTable ?? [],
-            'content' => [
-                'total' => (int) ($content->total ?? 0),
-                'max_cid' => (int) ($content->max_cid ?? 0),
-                'max_created' => (int) ($content->max_created ?? 0),
-                'max_modified' => (int) ($content->max_modified ?? 0),
-            ],
-            'metas' => array_map(static function (array $row): array {
-                return [
-                    'mid' => (int) ($row['mid'] ?? 0),
-                    'slug' => (string) ($row['slug'] ?? ''),
-                    'parent' => (int) ($row['parent'] ?? 0),
-                    'type' => (string) ($row['type'] ?? ''),
-                    'count' => (int) ($row['count'] ?? 0),
-                ];
-            }, $metas),
-        ];
-
-        $json = json_encode($state, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        return sha1(is_string($json) ? $json : serialize($state));
-    }
-
-    private static function storeStateStamp(array $settings): void
-    {
-        $cache = Settings::cache();
-        if (!$cache->enabled()) {
-            return;
-        }
-
-        try {
-            $cache->set('renewseo:last_state', self::stateStamp($settings), 2592000);
-        } catch (\Throwable $e) {
-            Log::write('file', 'storeState', 'error', '', $e->getMessage());
-        }
-    }
 }

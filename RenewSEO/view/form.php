@@ -5,7 +5,6 @@ use TypechoPlugin\RenewSEO\Settings;
 use TypechoPlugin\RenewSEO\Text;
 ?>
 <form id="renewseo-main-form" class="renewseo-form" method="post" action="<?php echo Text::e(Settings::actionUrl('save', true)); ?>">
-    
     <div class="tr-panel-pane is-active" data-tab="global">
         <div class="renewseo-card">
             <div class="renewseo-card-header">

@@ -178,6 +178,7 @@ class Log
                     ->limit(max(1, min(200, $limit)))
             );
         } catch (\Throwable $e) {
+            self::report('recentLogs failed: ' . $e->getMessage());
             return [];
         }
     }
@@ -192,6 +193,7 @@ class Log
                     ->limit(max(1, min(200, $limit)))
             );
         } catch (\Throwable $e) {
+            self::report('recent404 failed: ' . $e->getMessage());
             return [];
         }
     }
@@ -221,7 +223,7 @@ class Log
             $summary['notFound'] = (int) ($notFound->num ?? 0);
             $summary['top404'] = (int) ($top404->num ?? 0);
         } catch (\Throwable $e) {
-            self::report('write failed: ' . $e->getMessage());
+            self::report('summary failed: ' . $e->getMessage());
         }
 
         return $summary;

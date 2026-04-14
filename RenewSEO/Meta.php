@@ -73,12 +73,12 @@ class Meta
         $canonical = ($settings['canonicalEnable'] ?? '1') === '1' ? self::canonical($archive, $settings) : '';
 
         if ($canonical !== '' && !$archive->is('single')) {
-            $lines[] = '<link rel="canonical" href="' . self::e($canonical) . '" />';
+            $lines[] = '<link rel="canonical" href="' . Text::e($canonical) . '" />';
         }
 
         $robots = self::robotsMeta($archive, $settings);
         if ($robots !== '') {
-            $lines[] = '<meta name="robots" content="' . self::e($robots) . '" />';
+            $lines[] = '<meta name="robots" content="' . Text::e($robots) . '" />';
         }
 
         if (($settings['ogEnable'] ?? '1') === '1') {
@@ -155,14 +155,14 @@ class Meta
         ?>
         <section class="typecho-post-option">
             <label class="typecho-label"><?php _e('SEO 信息'); ?></label>
-            <p><input type="text" class="w-100 text" name="fields[seo_title]" value="<?php echo self::e($title); ?>" placeholder="<?php _e('SEO 标题（留空则沿用内容标题）'); ?>"></p>
-            <p><textarea class="w-100" name="fields[seo_desc]" rows="3" placeholder="<?php _e('SEO 描述（留空则自动摘取摘要）'); ?>"><?php echo self::e($desc); ?></textarea></p>
-            <p><input type="text" class="w-100 text" name="fields[seo_keys]" value="<?php echo self::e($keys); ?>" placeholder="<?php _e('SEO 关键词，多个用逗号分隔'); ?>"></p>
+            <p><input type="text" class="w-100 text" name="fields[seo_title]" value="<?php echo Text::e($title); ?>" placeholder="<?php _e('SEO 标题（留空则沿用内容标题）'); ?>"></p>
+            <p><textarea class="w-100" name="fields[seo_desc]" rows="3" placeholder="<?php _e('SEO 描述（留空则自动摘取摘要）'); ?>"><?php echo Text::e($desc); ?></textarea></p>
+            <p><input type="text" class="w-100 text" name="fields[seo_keys]" value="<?php echo Text::e($keys); ?>" placeholder="<?php _e('SEO 关键词，多个用逗号分隔'); ?>"></p>
         </section>
         <section class="typecho-post-option">
             <label class="typecho-label"><?php _e('SEO 技术项'); ?></label>
-            <p><input type="url" class="w-100 text mono" name="fields[seo_canonical]" value="<?php echo self::e($canonical); ?>" placeholder="<?php _e('Canonical 覆盖地址（留空则自动生成）'); ?>"></p>
-            <p><input type="text" class="w-100 text mono" name="fields[seo_image]" value="<?php echo self::e($image); ?>" placeholder="<?php _e('OG 图片地址（支持相对路径或绝对地址）'); ?>"></p>
+            <p><input type="url" class="w-100 text mono" name="fields[seo_canonical]" value="<?php echo Text::e($canonical); ?>" placeholder="<?php _e('Canonical 覆盖地址（留空则自动生成）'); ?>"></p>
+            <p><input type="text" class="w-100 text mono" name="fields[seo_image]" value="<?php echo Text::e($image); ?>" placeholder="<?php _e('OG 图片地址（支持相对路径或绝对地址）'); ?>"></p>
             <p>
                 <select name="fields[seo_robots]">
                     <option value=""<?php echo $robots === '' ? ' selected' : ''; ?>><?php _e('自动'); ?></option>
@@ -271,29 +271,29 @@ class Meta
         $url = $canonical !== '' ? $canonical : Settings::siteUrl();
 
         $lines = [
-            '<meta property="og:type" content="' . self::e($type) . '" />',
-            '<meta property="og:url" content="' . self::e($url) . '" />',
-            '<meta property="og:title" content="' . self::e($title) . '" />',
-            '<meta property="og:description" content="' . self::e($desc) . '" />',
-            '<meta property="og:site_name" content="' . self::e(Settings::siteName()) . '" />',
-            '<meta name="twitter:card" content="' . self::e($image === '' ? 'summary' : 'summary_large_image') . '" />',
-            '<meta name="twitter:title" content="' . self::e($title) . '" />',
-            '<meta name="twitter:description" content="' . self::e($desc) . '" />',
+            '<meta property="og:type" content="' . Text::e($type) . '" />',
+            '<meta property="og:url" content="' . Text::e($url) . '" />',
+            '<meta property="og:title" content="' . Text::e($title) . '" />',
+            '<meta property="og:description" content="' . Text::e($desc) . '" />',
+            '<meta property="og:site_name" content="' . Text::e(Settings::siteName()) . '" />',
+            '<meta name="twitter:card" content="' . Text::e($image === '' ? 'summary' : 'summary_large_image') . '" />',
+            '<meta name="twitter:title" content="' . Text::e($title) . '" />',
+            '<meta name="twitter:description" content="' . Text::e($desc) . '" />',
         ];
 
         if ($image !== '') {
-            $lines[] = '<meta property="og:image" content="' . self::e($image) . '" />';
-            $lines[] = '<meta name="twitter:image" content="' . self::e($image) . '" />';
+            $lines[] = '<meta property="og:image" content="' . Text::e($image) . '" />';
+            $lines[] = '<meta name="twitter:image" content="' . Text::e($image) . '" />';
         }
 
         if ($archive->is('single')) {
             $created = (int) ($archive->created ?? 0);
             $modified = max((int) ($archive->modified ?? 0), $created);
             if ($created > 0) {
-                $lines[] = '<meta property="article:published_time" content="' . self::e(date('c', $created)) . '" />';
+                $lines[] = '<meta property="article:published_time" content="' . Text::e(date('c', $created)) . '" />';
             }
             if ($modified > 0) {
-                $lines[] = '<meta property="article:modified_time" content="' . self::e(date('c', $modified)) . '" />';
+                $lines[] = '<meta property="article:modified_time" content="' . Text::e(date('c', $modified)) . '" />';
             }
         }
 
@@ -377,8 +377,4 @@ class Meta
         return '';
     }
 
-    private static function e(string $value): string
-    {
-        return Text::e($value);
-    }
 }

@@ -170,7 +170,7 @@ window.VditorRenewConfig = <?php echo $configJson ?: '{}'; ?>;
     {
         $result = ['name' => $item['name']];
         if (isset($item['tip']) && is_string($item['tip'])) {
-            $result['tip'] = self::sanitizeTip($item['tip']);
+            $result['tip'] = htmlspecialchars($item['tip'], ENT_QUOTES, 'UTF-8');
         }
         return $result;
     }
@@ -185,7 +185,7 @@ window.VditorRenewConfig = <?php echo $configJson ?: '{}'; ?>;
         $result = ['name' => $name];
 
         if (isset($item['tip']) && is_string($item['tip'])) {
-            $result['tip'] = self::sanitizeTip($item['tip']);
+            $result['tip'] = htmlspecialchars($item['tip'], ENT_QUOTES, 'UTF-8');
         }
 
         if (isset($item['icon']) && is_string($item['icon'])) {
@@ -203,11 +203,6 @@ window.VditorRenewConfig = <?php echo $configJson ?: '{}'; ?>;
         }
 
         return $result;
-    }
-
-    private static function sanitizeTip(string $tip): string
-    {
-        return htmlspecialchars($tip, ENT_QUOTES, 'UTF-8');
     }
 
     private static function fallback($content, string $type): void

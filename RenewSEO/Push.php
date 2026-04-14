@@ -255,8 +255,9 @@ class Push
             'key' => (string) $settings['indexNowKey'],
             'urlList' => $urls,
         ];
-        $keyLocation = Settings::keyUrl($settings);
-        if ($keyLocation !== '' && Settings::keyRelativePath($settings) !== ((string) $settings['indexNowKey'] . '.txt')) {
+        $keyRelativePath = Settings::keyRelativePath($settings);
+        $keyLocation = $keyRelativePath === '' ? '' : Settings::rootUrl($keyRelativePath);
+        if ($keyLocation !== '' && $keyRelativePath !== ((string) $settings['indexNowKey'] . '.txt')) {
             $payload['keyLocation'] = $keyLocation;
         }
 
