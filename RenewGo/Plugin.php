@@ -19,6 +19,7 @@ use Typecho\Widget\Helper\Form;
 use Utils\Helper;
 use Utils\NoPersonal;
 use Utils\Pref;
+use Utils\Schema;
 
 require_once __DIR__ . '/Action.php';
 
@@ -934,25 +935,7 @@ class RenewGo_Plugin implements PluginInterface
     private static function createTables(): void
     {
         try {
-            $db = Db::get();
-            $prefix = $db->getPrefix();
-            $adapter = $db->getAdapterName();
-
-            if ($adapter === 'Pgsql') {
-                $db->query("CREATE TABLE IF NOT EXISTS {$prefix}renew_go_logs (id SERIAL PRIMARY KEY, ip VARCHAR(45) NOT NULL, action VARCHAR(24) NOT NULL, result VARCHAR(16) NOT NULL, target TEXT DEFAULT NULL, referer TEXT DEFAULT NULL, created_at INTEGER NOT NULL)");
-                $db->query("CREATE INDEX IF NOT EXISTS idx_renew_go_ip_action_created ON {$prefix}renew_go_logs (ip, action, created_at)");
-                $db->query("CREATE INDEX IF NOT EXISTS idx_renew_go_created ON {$prefix}renew_go_logs (created_at)");
-                return;
-            }
-
-            if ($adapter === 'SQLite') {
-                $db->query("CREATE TABLE IF NOT EXISTS {$prefix}renew_go_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, ip TEXT NOT NULL, action TEXT NOT NULL, result TEXT NOT NULL, target TEXT DEFAULT NULL, referer TEXT DEFAULT NULL, created_at INTEGER NOT NULL)");
-                $db->query("CREATE INDEX IF NOT EXISTS idx_renew_go_ip_action_created ON {$prefix}renew_go_logs (ip, action, created_at)");
-                $db->query("CREATE INDEX IF NOT EXISTS idx_renew_go_created ON {$prefix}renew_go_logs (created_at)");
-                return;
-            }
-
-            $db->query("CREATE TABLE IF NOT EXISTS {$prefix}renew_go_logs (id INT AUTO_INCREMENT PRIMARY KEY, ip VARCHAR(45) NOT NULL, action VARCHAR(24) NOT NULL, result VARCHAR(16) NOT NULL, target VARCHAR(512) DEFAULT NULL, referer VARCHAR(512) DEFAULT NULL, created_at INT NOT NULL, KEY idx_ip_action_created (ip, action, created_at), KEY idx_created (created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+            Schema::ensureRenewGo(Db::get());
         } catch (Throwable $e) {
             self::reportException('createTables', $e);
         }
@@ -1087,7 +1070,8 @@ class RenewGo_Plugin implements PluginInterface
             'wildHost' => self::sanitizeHostArray((array) ($rules['wildHost'] ?? [])),
             'hostPath' => self::sanitizePathArray((array) ($rules['hostPath'] ?? [])),
             'mode' => (string) ($settings['mode'] ?? self::MODE_INTERSTITIAL),
-            'openInNewTab' => ((string) ($settings['openInNewTab'] ?? '1') === '1')
+            'openInNewTab' => ((string) ($settings['openInNewTab'] ?? '1') === '1'),
+            'rel' => array_values((array) ($settings['rel'] ?? ['nofollow', 'noopener', 'noreferrer']))
         ];
         $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if (!is_string($json) || $json === '') {

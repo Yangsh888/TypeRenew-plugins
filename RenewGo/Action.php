@@ -43,6 +43,10 @@ class RenewGo_Action extends Typecho_Widget
     public function go()
     {
         $settings = RenewGo_Plugin::getSettings();
+        $keepDays = (int) ($settings['logKeepDays'] ?? 0);
+        if ($keepDays > 0) {
+            $this->maybeCleanupLogs($keepDays);
+        }
         $encoded = trim((string) $this->request->get('target', ''));
         ['decoded' => $decoded, 'url' => $url] = $this->resolveTarget($encoded);
 
@@ -57,13 +61,14 @@ class RenewGo_Action extends Typecho_Widget
         }
 
         if ($settings['mode'] === 'direct302') {
+            $isWhitelisted = RenewGo_Plugin::isWhitelisted($url, $settings);
             if ((string) ($settings['directWhitelistOnly'] ?? '1') === '1') {
                 $whitelist = trim((string) ($settings['whitelist'] ?? ''));
                 if ($whitelist === '') {
                     $this->failPage('go', 'no-whitelist', $url, _t('直跳模式未配置白名单，请联系管理员'), 200, true);
                     return;
                 }
-                if (!RenewGo_Plugin::isWhitelisted($url, $settings)) {
+                if (!$isWhitelisted) {
                     $this->failPage('go', 'direct-denied', $url, _t('该外链未在直跳白名单中'), 200, true);
                     return;
                 }
@@ -71,9 +76,11 @@ class RenewGo_Action extends Typecho_Widget
             if (!$this->enforceRateLimit($settings, 'go', $url)) {
                 return;
             }
-            RenewGo_Plugin::logEvent('go', 'redirect', $url, (string) $this->request->getReferer(), true);
-            $this->response->redirect($url);
-            return;
+            if ($isWhitelisted) {
+                RenewGo_Plugin::logEvent('go', 'redirect', $url, (string) $this->request->getReferer(), true);
+                $this->response->redirect($url);
+                return;
+            }
         }
 
         $jumpUrl = RenewGo_Plugin::buildJumpUrl($encoded);
@@ -167,7 +174,7 @@ class RenewGo_Action extends Typecho_Widget
 
     private function rawJson(): array
     {
-        $body = (string) file_get_contents('php://input');
+        $body = $this->request->getRawBody();
         if (strlen($body) > self::MAX_JSON_SIZE) {
             $this->jsonError(_t('请求体过大'), 413, 'payload_too_large');
         }
@@ -300,6 +307,7 @@ class RenewGo_Action extends Typecho_Widget
         try {
             RenewGo_Plugin::cleanupLogs($keepDays);
         } catch (\Throwable $e) {
+            error_log('[RenewGo] cleanupLogs: ' . $e->getMessage());
         }
     }
 }

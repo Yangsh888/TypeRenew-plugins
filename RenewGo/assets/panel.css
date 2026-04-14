@@ -1,40 +1,41 @@
-.renewgo-topbar {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 10px;
-}
-
-.renewgo-form {
+.renewgo-panel .renewgo-inline {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 10px;
 }
 
-.renewgo-result {
+.renewgo-panel .renewgo-result {
     margin-top: 12px;
+    min-height: 48px;
+    padding: 14px 16px;
     border: 1px solid var(--tr-border);
     border-radius: 12px;
-    background: var(--tr-bg-elev);
-    padding: 12px;
-    min-height: 46px;
+    background: var(--tr-surface-2);
     color: var(--tr-text-2);
     word-break: break-all;
+    line-height: 1.6;
 }
 
-.renewgo-rules {
+.renewgo-panel .renewgo-result:empty::before {
+    content: "等待测试结果";
+    color: var(--tr-text-3);
+}
+
+.renewgo-panel .renewgo-rules {
     min-height: 220px;
-    border-radius: 12px;
 }
 
-.renewgo-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
+.renewgo-panel .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 13px;
 }
 
-.renewgo-actions {
-    display: inline-flex;
-    gap: 8px;
+.renewgo-panel .renewgo-empty-cell {
+    padding: 0 !important;
+}
+
+@media (max-width: 768px) {
+    .renewgo-panel .renewgo-inline {
+        grid-template-columns: 1fr;
+    }
 }

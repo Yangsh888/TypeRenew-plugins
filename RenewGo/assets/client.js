@@ -13,6 +13,7 @@
     }
     
     var hostPath = c.hostPath || [];
+    var relList = Array.isArray(c.rel) && c.rel.length ? c.rel : ["nofollow","noopener","noreferrer"];
     var exactHost = {};
     (c.exactHost || []).forEach(function(h){
         exactHost[String(h || "").toLowerCase()] = 1;
@@ -88,7 +89,7 @@
             a.setAttribute("target", "_blank");
         }
         var rel = (a.getAttribute("rel") || "").split(/\s+/).filter(Boolean);
-        ["nofollow","noopener","noreferrer"].forEach(function(x){
+        relList.forEach(function(x){
             if(rel.indexOf(x) < 0){
                 rel.push(x);
             }
