@@ -9,5 +9,5 @@ TypeRenew 官方插件仓库 —— 为 TypeRenew 提供官方专用拓展集合
 | RenewAvatar | 头像源替换，支持多种 Gravatar 镜像源，可全局生效或仅限评论区域 |
 | RenewGo | 外链安全拓展，支持安全提示页跳转或 302 跳转，可配置白名单和日志记录 |
 | VditorRenew | 引入 Vditor 编辑器，支持所见即所得、即时渲染、分屏预览三种模式，兼容旧文章 |
-| RenewSEO | 集成提供 Robots、Sitemap、Canonical、OG、时间因子、主动推送与 SEO 监控等能力|
+| RenewSEO | 集成 Robots、Sitemap、Canonical、OG、时间因子、主动推送与 SEO 监控等能力|
 | 敬请期待...... | 持续更新中...... |
