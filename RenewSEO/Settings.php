@@ -34,6 +34,17 @@ class Settings
         );
     }
 
+    public static function loadFresh(): array
+    {
+        $raw = self::readStored('fresh.read');
+        if (empty($raw)) {
+            self::ensureStored();
+            $raw = self::readStored('fresh.retry');
+        }
+
+        return self::normalize(array_merge(self::defaults(), $raw));
+    }
+
     public static function defaults(): array
     {
         return [
@@ -44,7 +55,7 @@ class Settings
             'notFoundKeepDays' => 30,
             'logAutoClean' => '1',
             'pushAsync' => '1',
-            'pushTimeout' => 4,
+            'pushTimeout' => 10,
             'robotsEnable' => '1',
             'robotsDefault' => 'allow',
             'robotsMode' => 'default_only',
@@ -130,7 +141,7 @@ class Settings
         $settings['cacheTtl'] = self::int($settings['cacheTtl'] ?? 300, 60, 3600, 300);
         $settings['logKeepDays'] = self::int($settings['logKeepDays'] ?? 30, 0, 3650, 30);
         $settings['notFoundKeepDays'] = self::int($settings['notFoundKeepDays'] ?? 30, 0, 3650, 30);
-        $settings['pushTimeout'] = self::int($settings['pushTimeout'] ?? 4, 2, 20, 4);
+        $settings['pushTimeout'] = self::int($settings['pushTimeout'] ?? 10, 2, 20, 10);
         $settings['sitemapSplit'] = self::int($settings['sitemapSplit'] ?? 1000, 100, 50000, 1000);
         $settings['sitemapDebounce'] = self::int($settings['sitemapDebounce'] ?? 15, 0, 3600, 15);
         $settings['baiduDays'] = self::int($settings['baiduDays'] ?? 0, 0, 3650, 0);

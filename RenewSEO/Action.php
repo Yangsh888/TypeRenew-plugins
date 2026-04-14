@@ -70,7 +70,7 @@ class Action extends \Typecho\Widget
 
     private function save(): void
     {
-        $previous = Settings::load();
+        $previous = Settings::loadFresh();
         $data = [
             'enabled' => '0',
             'logAutoClean' => '0',
@@ -97,7 +97,11 @@ class Action extends \Typecho\Widget
             'bingEnable' => '0',
             'bingOnEdit' => '0',
         ];
-        $data = array_merge($data, $this->request->from('enabled', 'cacheTtl', 'panelSize', 'logKeepDays', 'notFoundKeepDays', 'logAutoClean', 'pushAsync', 'pushTimeout', 'robotsEnable', 'robotsDefault', 'robotsMode', 'robotsAllowed', 'robotsDenied', 'robotsBlocked', 'robotsExtra', 'robotsSitemap', 'robotsCustomSitemaps', 'sitemapEnable', 'sitemapTxt', 'sitemapSplit', 'sitemapDebounce', 'sitemapPage', 'sitemapCategory', 'sitemapTag', 'sitemapAuthor', 'sitemapPriorityHome', 'sitemapPriorityPost', 'sitemapPriorityPage', 'sitemapPriorityCategory', 'sitemapPriorityTag', 'sitemapPriorityAuthor', 'sitemapFreqHome', 'sitemapFreqPost', 'sitemapFreqPage', 'sitemapFreqTaxonomy', 'ogEnable', 'ogDefaultImage', 'timeEnable', 'canonicalEnable', 'canonicalStrip', 'noindexSearch', 'noindex404', 'altEnable', 'altTemplate', 'baiduEnable', 'baiduToken', 'baiduQuick', 'baiduDays', 'baiduPushOnEdit', 'indexNowEnable', 'indexNowKey', 'indexNowKeyPath', 'indexNowOnEdit', 'bingEnable', 'bingApiKey', 'bingOnEdit'));
+        $submitted = array_filter(
+            $this->request->from('enabled', 'cacheTtl', 'panelSize', 'logKeepDays', 'notFoundKeepDays', 'logAutoClean', 'pushAsync', 'pushTimeout', 'robotsEnable', 'robotsDefault', 'robotsMode', 'robotsAllowed', 'robotsDenied', 'robotsBlocked', 'robotsExtra', 'robotsSitemap', 'robotsCustomSitemaps', 'sitemapEnable', 'sitemapTxt', 'sitemapSplit', 'sitemapDebounce', 'sitemapPage', 'sitemapCategory', 'sitemapTag', 'sitemapAuthor', 'sitemapPriorityHome', 'sitemapPriorityPost', 'sitemapPriorityPage', 'sitemapPriorityCategory', 'sitemapPriorityTag', 'sitemapPriorityAuthor', 'sitemapFreqHome', 'sitemapFreqPost', 'sitemapFreqPage', 'sitemapFreqTaxonomy', 'ogEnable', 'ogDefaultImage', 'timeEnable', 'canonicalEnable', 'canonicalStrip', 'noindexSearch', 'noindex404', 'altEnable', 'altTemplate', 'baiduEnable', 'baiduToken', 'baiduQuick', 'baiduDays', 'baiduPushOnEdit', 'indexNowEnable', 'indexNowKey', 'indexNowKeyPath', 'indexNowOnEdit', 'bingEnable', 'bingApiKey', 'bingOnEdit'),
+            static fn($value): bool => $value !== null
+        );
+        $data = array_merge($data, $submitted);
         $next = Settings::normalize(array_merge($previous, $data));
         Settings::store($next);
         Files::sync('save', true);

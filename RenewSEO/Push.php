@@ -65,7 +65,7 @@ class Push
                 if (!$client) {
                     throw new \RuntimeException('http client unavailable');
                 }
-                $client->setTimeout((int) ($settings['pushTimeout'] ?? 4));
+                $client->setTimeout((int) ($settings['pushTimeout'] ?? 10));
                 $client->setMethod('POST');
                 $client->setHeader('Content-Type', 'application/json; charset=utf-8');
                 $client->setJson($payload);
@@ -283,7 +283,8 @@ class Push
             return ['ok' => true, 'skipped' => true];
         }
 
-        $endpoint = 'https://ssl.bing.com/webmaster/api.svc/json/SubmitUrlbatch?apikey=' . rawurlencode((string) $settings['bingApiKey']);
+        $endpoint = 'https://ssl.bing.com/webmaster/api.svc/json/SubmitUrlbatch?apikey='
+            . rawurlencode((string) $settings['bingApiKey']);
         $responses = [];
         $ok = true;
 
@@ -293,6 +294,7 @@ class Push
                 'urlList' => array_values($chunk),
             ];
             $response = self::requestJson($endpoint, $payload);
+
             if (($response['status'] ?? 500) >= 400) {
                 $ok = false;
             }
@@ -318,10 +320,11 @@ class Push
     private static function request(string $url, string $body, array $headers = []): array
     {
         $settings = Settings::load();
+        $timeout = (int) ($settings['pushTimeout'] ?? 10);
         try {
             $client = Client::get();
             if ($client) {
-                $client->setTimeout((int) ($settings['pushTimeout'] ?? 4));
+                $client->setTimeout($timeout);
                 foreach ($headers as $header) {
                     [$name, $value] = array_pad(explode(':', $header, 2), 2, '');
                     $client->setHeader(trim($name), trim($value));
@@ -343,7 +346,7 @@ class Push
         $context = stream_context_create([
             'http' => [
                 'method' => 'POST',
-                'timeout' => (int) ($settings['pushTimeout'] ?? 4),
+                'timeout' => $timeout,
                 'header' => implode("\r\n", $headers),
                 'content' => $body,
                 'ignore_errors' => true,

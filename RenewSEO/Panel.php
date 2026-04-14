@@ -11,7 +11,7 @@ use TypechoPlugin\RenewSEO\Settings;
 use TypechoPlugin\RenewSEO\Text;
 
 $user->pass('administrator');
-$settings = Settings::load();
+$settings = Settings::loadFresh();
 $summary = Log::summary();
 $logs = Log::recentLogs((int) $settings['panelSize']);
 $notFound = Log::recent404((int) $settings['panelSize']);
