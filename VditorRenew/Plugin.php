@@ -4,8 +4,9 @@
  *
  * @package VditorRenew
  * @author TypeRenew
- * @link https://github.com/Yangsh888/TypeRenew
- * @version 1.0.0
+ * @link https://www.typerenew.com/
+ * @version 1.4.1
+ * @since 1.4.1
  */
 if (!defined('__TYPECHO_ROOT_DIR__')) {
     exit;

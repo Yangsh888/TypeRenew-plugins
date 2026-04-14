@@ -15,12 +15,13 @@ if (!defined('__TYPECHO_ROOT_DIR__')) {
 }
 
 /**
- * 统一提供 Robots、Sitemap、Canonical、OG、时间因子、主动推送与 SEO 监控能力。
+ * 【TypeRenew 专用】SEO 功能拓展
  *
  * @package RenewSEO
  * @author TypeRenew
- * @version 1.0.0
- * @since 1.4.0
+ * @link https://www.typerenew.com/
+ * @version 1.4.1
+ * @since 1.4.1
  */
 class Plugin implements PluginInterface
 {
