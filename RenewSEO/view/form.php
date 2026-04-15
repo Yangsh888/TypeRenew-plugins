@@ -375,7 +375,7 @@ use TypechoPlugin\RenewSEO\Text;
                 <div class="renewseo-list-item">
                     <div class="renewseo-list-item-meta">
                         <h4 class="renewseo-list-item-title">启用时间因子</h4>
-                        <p class="renewseo-list-item-desc">输出文章的发布与更新时间 meta，对百度收录友好。</p>
+                        <p class="renewseo-list-item-desc">仅在文章与独立页输出字节跳动时间 Meta 与百度 JSON-LD 时间因子。</p>
                     </div>
                     <div class="renewseo-list-item-control">
                         <label class="renewseo-switch">

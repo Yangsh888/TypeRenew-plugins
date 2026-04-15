@@ -8,4 +8,3 @@ global.sre.Engine = {
         return SRE.engineReady();
     }
 };
-//# sourceMappingURL=sre-node.js.map

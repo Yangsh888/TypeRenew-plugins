@@ -20,7 +20,7 @@ if (!defined('__TYPECHO_ROOT_DIR__')) {
  * @package RenewSEO
  * @author TypeRenew
  * @link https://www.typerenew.com/
- * @version 1.4.1
+ * @version 1.1.0
  * @since 1.4.1
  */
 class Plugin implements PluginInterface
