@@ -36,6 +36,7 @@ class RenewGo_Plugin implements PluginInterface
     private const MODE_DIRECT = 'direct302';
     private const MODE_OFF = 'off';
 
+    private static ?array $runtimeSettings = null;
     private static array $runtimeRules = [];
     private static bool $buffering = false;
     private static int $bufferLevel = 0;
@@ -235,9 +236,8 @@ class RenewGo_Plugin implements PluginInterface
 
     public static function getSettings(): array
     {
-        static $runtime = null;
         return Pref::load(
-            $runtime,
+            self::$runtimeSettings,
             self::CACHE_KEY,
             self::defaults(),
             static fn() => (array) Helper::options()->plugin(self::NAME)->toArray(),
@@ -948,7 +948,9 @@ class RenewGo_Plugin implements PluginInterface
                 self::reportException('clearConfigCache.' . $scope, $e);
             }
         );
+        self::$runtimeSettings = null;
         self::$runtimeRules = [];
+        \Widget\Options::destroy();
     }
 
     private static function isEnabled(array $settings): bool

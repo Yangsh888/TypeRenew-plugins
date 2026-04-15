@@ -26,6 +26,7 @@ class RenewAvatar_Plugin implements PluginInterface
     private const NAME = 'RenewAvatar';
     private const CACHE_KEY = 'renewavatar:settings:v1';
     private const FAIL_MARK = '__FAIL__';
+    private static ?array $runtimeSettings = null;
 
     public static function activate()
     {
@@ -475,9 +476,8 @@ class RenewAvatar_Plugin implements PluginInterface
 
     private static function getSettings(): array
     {
-        static $runtime = null;
         return Pref::load(
-            $runtime,
+            self::$runtimeSettings,
             self::CACHE_KEY,
             self::defaults(),
             static fn() => (array) Widget_Options::alloc()->plugin(self::NAME)->toArray(),
@@ -514,6 +514,8 @@ class RenewAvatar_Plugin implements PluginInterface
                 self::reportException('clearCache.' . $scope, $e);
             }
         );
+        self::$runtimeSettings = null;
+        \Widget\Options::destroy();
     }
 
     private static function cacheGet(string $key): ?string
