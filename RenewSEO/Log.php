@@ -205,6 +205,37 @@ class Log
         }
     }
 
+    public static function summary(): array
+    {
+        $summary = [
+            'logs' => 0,
+            'errors' => 0,
+            'notFound' => 0,
+            'top404' => 0,
+        ];
+
+        try {
+            $db = Db::get();
+            $total = $db->fetchObject($db->select(['COUNT(*)' => 'num'])->from('table.renew_seo_logs'));
+            $errors = $db->fetchObject(
+                $db->select(['COUNT(*)' => 'num'])->from('table.renew_seo_logs')->where('level = ?', 'error')
+            );
+            $notFound = $db->fetchObject($db->select(['COUNT(*)' => 'num'])->from('table.renew_seo_404'));
+            $top404 = $db->fetchObject(
+                $db->select(['MAX(hits)' => 'num'])->from('table.renew_seo_404')
+            );
+
+            $summary['logs'] = (int) ($total->num ?? 0);
+            $summary['errors'] = (int) ($errors->num ?? 0);
+            $summary['notFound'] = (int) ($notFound->num ?? 0);
+            $summary['top404'] = (int) ($top404->num ?? 0);
+        } catch (\Throwable $e) {
+            self::report('summary failed: ' . $e->getMessage());
+        }
+
+        return $summary;
+    }
+
     private static function encodePayload(array $payload): string
     {
         if (empty($payload)) {
