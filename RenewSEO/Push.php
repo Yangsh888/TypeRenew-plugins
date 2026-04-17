@@ -261,7 +261,11 @@ class Push
             $payload['keyLocation'] = $keyLocation;
         }
 
-        $response = self::requestJson('https://www.bing.com/indexnow', $payload);
+        $response = self::request(
+            'https://www.bing.com/indexnow',
+            (string) json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            ['Content-Type: application/json; charset=utf-8']
+        );
         $ok = ($response['status'] ?? 500) < 400;
         $result = [
             'ok' => $ok,
@@ -293,7 +297,11 @@ class Push
                 'siteUrl' => rtrim(Settings::siteUrl(), '/'),
                 'urlList' => array_values($chunk),
             ];
-            $response = self::requestJson($endpoint, $payload);
+            $response = self::request(
+                $endpoint,
+                (string) json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                ['Content-Type: application/json; charset=utf-8']
+            );
 
             if (($response['status'] ?? 500) >= 400) {
                 $ok = false;
@@ -308,13 +316,6 @@ class Push
         ];
         Log::write('push', 'bing', $ok ? 'info' : 'error', '', 'Bing 推送执行完成', $result);
         return $result;
-    }
-
-    private static function requestJson(string $url, array $payload): array
-    {
-        return self::request($url, (string) json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), [
-            'Content-Type: application/json; charset=utf-8',
-        ]);
     }
 
     private static function request(string $url, string $body, array $headers = []): array

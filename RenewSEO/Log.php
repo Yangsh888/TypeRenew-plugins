@@ -59,6 +59,9 @@ class Log
     {
         try {
             $settings = Settings::load();
+            if (($settings['notFoundEnable'] ?? '1') !== '1') {
+                return;
+            }
             self::maybeCleanup($settings);
 
             $fullUrl = (string) $request->getRequestUrl();
@@ -77,9 +80,13 @@ class Log
             );
 
             $now = time();
-            $referer = self::cut((string) $request->getReferer(), self::REFERER_LIMIT);
-            $ip = self::cut((string) $request->getIp(), 45);
-            $ua = self::cut((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), self::UA_LIMIT);
+            $referer = ($settings['notFoundStoreReferer'] ?? '0') === '1'
+                ? self::cut((string) $request->getReferer(), self::REFERER_LIMIT)
+                : '';
+            $ip = self::notFoundIp((string) $request->getIp(), $settings);
+            $ua = ($settings['notFoundStoreUa'] ?? '0') === '1'
+                ? self::cut((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), self::UA_LIMIT)
+                : '';
 
             if ($row) {
                 $db->query(
@@ -198,37 +205,6 @@ class Log
         }
     }
 
-    public static function summary(): array
-    {
-        $summary = [
-            'logs' => 0,
-            'errors' => 0,
-            'notFound' => 0,
-            'top404' => 0,
-        ];
-
-        try {
-            $db = Db::get();
-            $total = $db->fetchObject($db->select(['COUNT(*)' => 'num'])->from('table.renew_seo_logs'));
-            $errors = $db->fetchObject(
-                $db->select(['COUNT(*)' => 'num'])->from('table.renew_seo_logs')->where('level = ?', 'error')
-            );
-            $notFound = $db->fetchObject($db->select(['COUNT(*)' => 'num'])->from('table.renew_seo_404'));
-            $top404 = $db->fetchObject(
-                $db->select(['MAX(hits)' => 'num'])->from('table.renew_seo_404')
-            );
-
-            $summary['logs'] = (int) ($total->num ?? 0);
-            $summary['errors'] = (int) ($errors->num ?? 0);
-            $summary['notFound'] = (int) ($notFound->num ?? 0);
-            $summary['top404'] = (int) ($top404->num ?? 0);
-        } catch (\Throwable $e) {
-            self::report('summary failed: ' . $e->getMessage());
-        }
-
-        return $summary;
-    }
-
     private static function encodePayload(array $payload): string
     {
         if (empty($payload)) {
@@ -258,6 +234,39 @@ class Log
             $path = '/';
         }
         return $path;
+    }
+
+    private static function notFoundIp(string $ip, array $settings): string
+    {
+        $ip = self::cut($ip, 45);
+        if ($ip === '') {
+            return '';
+        }
+
+        if (($settings['notFoundMaskIp'] ?? '1') !== '1') {
+            return $ip;
+        }
+
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false) {
+            $parts = explode('.', $ip);
+            if (count($parts) === 4) {
+                $parts[3] = '0';
+                return implode('.', $parts);
+            }
+        }
+
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false) {
+            $packed = @inet_pton($ip);
+            if ($packed !== false) {
+                $masked = substr($packed, 0, 8) . str_repeat("\0", 8);
+                $normalized = @inet_ntop($masked);
+                if (is_string($normalized) && $normalized !== false) {
+                    return $normalized;
+                }
+            }
+        }
+
+        return $ip;
     }
 
     private static function report(string $message): void

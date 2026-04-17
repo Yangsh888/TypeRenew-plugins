@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace TypechoPlugin\RenewSEO;
 
+use Typecho\Router;
+
 if (!defined('__TYPECHO_ROOT_DIR__')) {
     exit;
 }
@@ -96,6 +98,7 @@ class Meta
         if (($settings['timeEnable'] ?? '1') === '1') {
             $lines = array_merge($lines, self::timeFactorLines($archive, $state));
         }
+        $lines = array_merge($lines, self::schemaLines($archive, $state, $settings));
 
         if (!empty($lines)) {
             echo implode("\n", $lines) . "\n";
@@ -149,8 +152,6 @@ class Meta
 
     private static function renderFields($item): void
     {
-        $cid = method_exists($item, 'have') && $item->have() ? (int) ($item->cid ?? 0) : 0;
-        $type = (string) ($item->type ?? 'post');
         $title = self::field($item, 'seo_title');
         $desc = self::field($item, 'seo_desc');
         $keys = self::field($item, 'seo_keys');
@@ -177,9 +178,6 @@ class Meta
                     <option value="noindex,nofollow"<?php echo $robots === 'noindex,nofollow' ? ' selected' : ''; ?>>noindex,nofollow</option>
                 </select>
             </p>
-            <?php if ($cid > 0): ?>
-                <p class="description"><?php echo $type === 'post' ? _t('当前文章') : _t('当前页面'); ?> CID: <?php echo $cid; ?></p>
-            <?php endif; ?>
         </section>
         <?php
     }
@@ -202,7 +200,8 @@ class Meta
             $url = Settings::siteUrl();
         }
 
-        return self::stripParams($url, (string) ($settings['canonicalStrip'] ?? ''));
+        $url = self::stripParams($url, (string) ($settings['canonicalStrip'] ?? ''));
+        return self::normalizeCanonical($url, $settings);
     }
 
     private static function stripParams(string $url, string $rules): string
@@ -250,6 +249,61 @@ class Meta
         return $scheme . $user . $pass . $host . $port . $path . $query;
     }
 
+    private static function normalizeCanonical(string $url, array $settings): string
+    {
+        $parts = parse_url($url);
+        if ($parts === false) {
+            return $url;
+        }
+
+        if (($settings['canonicalHost'] ?? '1') === '1') {
+            $site = parse_url(Settings::siteUrl());
+            if ($site !== false) {
+                $parts['scheme'] = $site['scheme'] ?? ($parts['scheme'] ?? 'https');
+                $parts['host'] = $site['host'] ?? ($parts['host'] ?? '');
+                if (isset($site['port'])) {
+                    $parts['port'] = $site['port'];
+                } else {
+                    unset($parts['port']);
+                }
+            }
+        }
+
+        if (!empty($parts['query'])) {
+            parse_str((string) $parts['query'], $query);
+            if (($settings['canonicalPageOne'] ?? '1') === '1' && (($query['page'] ?? null) === '1' || ($query['page'] ?? null) === 1)) {
+                unset($query['page']);
+            }
+            $parts['query'] = http_build_query($query);
+        }
+
+        $path = (string) ($parts['path'] ?? '/');
+        $parts['path'] = self::normalizePathSlash($path, (string) ($settings['canonicalTrailingSlash'] ?? 'keep'));
+
+        return self::buildUrl($parts);
+    }
+
+    private static function normalizePathSlash(string $path, string $mode): string
+    {
+        if ($path === '') {
+            return '/';
+        }
+
+        if ($mode === 'keep') {
+            return $path;
+        }
+
+        if ($path === '/' || preg_match('#\.[a-z0-9]{1,8}$#i', $path) === 1) {
+            return $path;
+        }
+
+        if ($mode === 'add') {
+            return rtrim($path, '/') . '/';
+        }
+
+        return rtrim($path, '/') === '' ? '/' : rtrim($path, '/');
+    }
+
     private static function robotsMeta($archive, array $settings): string
     {
         $custom = self::field($archive, 'seo_robots');
@@ -261,6 +315,18 @@ class Meta
             return 'noindex,nofollow';
         }
         if ($archive->is('search') && ($settings['noindexSearch'] ?? '1') === '1') {
+            return 'noindex,follow';
+        }
+        if ($archive->is('category') && ($settings['noindexCategory'] ?? '0') === '1') {
+            return 'noindex,follow';
+        }
+        if ($archive->is('tag') && ($settings['noindexTag'] ?? '0') === '1') {
+            return 'noindex,follow';
+        }
+        if ($archive->is('author') && ($settings['noindexAuthor'] ?? '0') === '1') {
+            return 'noindex,follow';
+        }
+        if (self::currentPage($archive) > 1 && !$archive->is('single') && ($settings['noindexPaged'] ?? '1') === '1') {
             return 'noindex,follow';
         }
         return '';
@@ -325,18 +391,193 @@ class Meta
         ];
     }
 
+    private static function schemaLines($archive, array $state, array $settings): array
+    {
+        $lines = [];
+
+        if (($settings['schemaArticle'] ?? '1') === '1') {
+            $article = self::articleSchema($archive, $state);
+            if ($article !== []) {
+                $lines[] = self::jsonLdScript($article);
+            }
+        }
+
+        if (($settings['schemaBreadcrumb'] ?? '1') === '1') {
+            $breadcrumb = self::breadcrumbSchema($archive, $state);
+            if ($breadcrumb !== []) {
+                $lines[] = self::jsonLdScript($breadcrumb);
+            }
+        }
+
+        if (($settings['schemaWebsiteSearch'] ?? '1') === '1') {
+            $website = self::websiteSchema();
+            if ($website !== []) {
+                $lines[] = self::jsonLdScript($website);
+            }
+        }
+
+        return array_values(array_filter($lines, static fn($line): bool => $line !== ''));
+    }
+
+    private static function articleSchema($archive, array $state): array
+    {
+        if (!$archive->is('single') || $archive->is('error404')) {
+            return [];
+        }
+
+        $schema = [
+            '@context' => 'https://schema.org',
+            '@type' => ((string) ($archive->type ?? 'post')) === 'page' ? 'WebPage' : 'Article',
+            'headline' => $state['title'],
+            'description' => $state['description'],
+            'mainEntityOfPage' => [
+                '@type' => 'WebPage',
+                '@id' => $state['url'],
+            ],
+            'url' => $state['url'],
+            'author' => [
+                '@type' => 'Person',
+                'name' => self::authorName($archive),
+            ],
+            'publisher' => [
+                '@type' => 'Organization',
+                'name' => Settings::siteName(),
+                'url' => Settings::siteUrl(),
+            ],
+        ];
+
+        if ($state['publishedAt'] !== '') {
+            $schema['datePublished'] = $state['publishedAt'];
+        }
+        if ($state['updatedAt'] !== '') {
+            $schema['dateModified'] = $state['updatedAt'];
+        }
+        if ($state['image'] !== '') {
+            $schema['image'] = [$state['image']];
+        }
+        $section = self::primaryCategoryName($archive);
+        if ($section !== '') {
+            $schema['articleSection'] = $section;
+        }
+
+        return $schema;
+    }
+
+    private static function breadcrumbSchema($archive, array $state): array
+    {
+        if ($archive->is('error404')) {
+            return [];
+        }
+
+        $items = [[
+            '@type' => 'ListItem',
+            'position' => 1,
+            'name' => Settings::siteName(),
+            'item' => Settings::siteUrl(),
+        ]];
+
+        $position = 2;
+        $category = self::primaryCategory($archive);
+        if ($archive->is('single') && $category !== []) {
+            $items[] = [
+                '@type' => 'ListItem',
+                'position' => $position++,
+                'name' => (string) ($category['name'] ?? ''),
+                'item' => (string) ($category['permalink'] ?? ''),
+            ];
+        }
+
+        if ($state['title'] !== '' && $state['url'] !== '' && rtrim($state['url'], '/') !== rtrim(Settings::siteUrl(), '/')) {
+            $items[] = [
+                '@type' => 'ListItem',
+                'position' => $position,
+                'name' => $state['title'],
+                'item' => $state['url'],
+            ];
+        }
+
+        if (count($items) < 2) {
+            return [];
+        }
+
+        return [
+            '@context' => 'https://schema.org',
+            '@type' => 'BreadcrumbList',
+            'itemListElement' => $items,
+        ];
+    }
+
+    private static function websiteSchema(): array
+    {
+        $target = Router::url('search', ['keywords' => '{search_term_string}'], (string) Settings::options()->index);
+        if ($target === '#') {
+            return [];
+        }
+
+        $target = str_replace(
+            ['%7Bsearch_term_string%7D', '%257Bsearch_term_string%257D'],
+            '{search_term_string}',
+            $target
+        );
+
+        return [
+            '@context' => 'https://schema.org',
+            '@type' => 'WebSite',
+            'name' => Settings::siteName(),
+            'url' => Settings::siteUrl(),
+            'potentialAction' => [
+                '@type' => 'SearchAction',
+                'target' => $target,
+                'query-input' => 'required name=search_term_string',
+            ],
+        ];
+    }
+
+    private static function jsonLdScript(array $data): string
+    {
+        $json = json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+        return is_string($json) && $json !== ''
+            ? '<script type="application/ld+json">' . $json . '</script>'
+            : '';
+    }
+
     private static function image($archive, array $settings): string
     {
-        $custom = self::field($archive, 'seo_image');
+        $fields = [];
+        if (!empty($archive->fields)) {
+            $fields = is_object($archive->fields) ? get_object_vars($archive->fields) : (array) $archive->fields;
+        }
+
+        return self::resolveImage(
+            self::field($archive, 'seo_image'),
+            $fields,
+            (string) ($archive->text ?? ''),
+            $settings,
+            true
+        );
+    }
+
+    public static function sitemapImage(array $row, array $fields, array $settings): string
+    {
+        return self::resolveImage(
+            trim((string) ($fields['seo_image'] ?? '')),
+            $fields,
+            (string) ($row['text'] ?? ''),
+            $settings,
+            false
+        );
+    }
+
+    private static function resolveImage(string $custom, array $fields, string $raw, array $settings, bool $allowDefault): string
+    {
         if ($custom !== '') {
             return Settings::absoluteUrl($custom);
         }
 
-        if (!empty($archive->fields) && isset($archive->fields->bannerUrl) && (string) $archive->fields->bannerUrl !== '') {
-            return Settings::absoluteUrl((string) $archive->fields->bannerUrl);
+        if (!empty($fields['bannerUrl'])) {
+            return Settings::absoluteUrl((string) $fields['bannerUrl']);
         }
 
-        $raw = (string) ($archive->text ?? '');
         if ($raw !== '') {
             if (preg_match('/<img[^>]+src\s*=\s*(["\'])(.*?)\1/i', $raw, $m)) {
                 return Settings::absoluteUrl((string) $m[2]);
@@ -344,6 +585,10 @@ class Meta
             if (preg_match('/!\[[^\]]*]\(([^)\s]+)(?:\s+"[^"]*")?\)/', $raw, $m)) {
                 return Settings::absoluteUrl((string) $m[1]);
             }
+        }
+
+        if (!$allowDefault) {
+            return '';
         }
 
         return Settings::absoluteUrl((string) ($settings['ogDefaultImage'] ?? ''));
@@ -461,6 +706,36 @@ class Meta
         }
 
         return '';
+    }
+
+    private static function currentPage($archive): int
+    {
+        return max(1, (int) ($archive->currentPage ?? 1));
+    }
+
+    private static function authorName($archive): string
+    {
+        if (!empty($archive->author) && isset($archive->author->screenName)) {
+            return trim((string) $archive->author->screenName);
+        }
+
+        return Settings::siteName();
+    }
+
+    private static function primaryCategory($archive): array
+    {
+        if (empty($archive->categories) || !is_array($archive->categories)) {
+            return [];
+        }
+
+        $first = $archive->categories[0] ?? null;
+        return is_array($first) ? $first : [];
+    }
+
+    private static function primaryCategoryName($archive): string
+    {
+        $category = self::primaryCategory($archive);
+        return trim((string) ($category['name'] ?? ''));
     }
 
 }

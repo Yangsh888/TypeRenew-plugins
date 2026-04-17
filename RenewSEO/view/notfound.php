@@ -21,13 +21,14 @@ use TypechoPlugin\RenewSEO\Text;
                     <th>路径</th>
                     <th>完整 URL</th>
                     <th>来源</th>
+                    <th>UA</th>
                     <th>IP</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($notFound)): ?>
                     <tr>
-                        <td colspan="6" class="renewseo-empty-cell">
+                        <td colspan="7">
                             <div class="tr-panel-empty">暂无 404 记录</div>
                         </td>
                     </tr>
@@ -38,7 +39,8 @@ use TypechoPlugin\RenewSEO\Text;
                             <td><?php echo (int) $row['hits']; ?></td>
                             <td class="mono"><?php echo Text::e((string) $row['path']); ?></td>
                             <td class="mono"><?php echo Text::e((string) $row['full_url']); ?></td>
-                            <td class="mono"><?php echo Text::e((string) $row['referer']); ?></td>
+                            <td class="mono"><?php echo Text::e((string) ($row['referer'] !== '' ? $row['referer'] : '-')); ?></td>
+                            <td class="mono"><?php echo Text::e((string) ($row['ua'] !== '' ? $row['ua'] : '-')); ?></td>
                             <td><?php echo Text::e((string) $row['ip']); ?></td>
                         </tr>
                     <?php endforeach; ?>

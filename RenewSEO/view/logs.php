@@ -28,7 +28,7 @@ use TypechoPlugin\RenewSEO\Text;
             <tbody>
                 <?php if (empty($logs)): ?>
                     <tr>
-                        <td colspan="7" class="renewseo-empty-cell">
+                        <td colspan="7">
                             <div class="tr-panel-empty">暂无运行日志</div>
                         </td>
                     </tr>

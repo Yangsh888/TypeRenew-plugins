@@ -12,7 +12,6 @@ if (!defined('__TYPECHO_ROOT_DIR__')) {
     exit;
 }
 
-use Typecho\Cache;
 use Typecho\Common;
 use Typecho\Plugin\PluginInterface;
 use Typecho\Widget\Helper\Form;
@@ -27,6 +26,7 @@ class VditorRenew_Plugin implements PluginInterface
     private const NAME = 'VditorRenew';
     private const CACHE_KEY = 'vditorrenew:settings:v2';
     private const DIST_REL = 'assets/vditor/dist';
+    private static ?array $runtimeSettings = null;
 
     public static function activate()
     {
@@ -168,9 +168,8 @@ class VditorRenew_Plugin implements PluginInterface
 
     public static function getSettings(): array
     {
-        static $runtime = null;
         return Pref::load(
-            $runtime,
+            self::$runtimeSettings,
             self::CACHE_KEY,
             self::defaults(),
             static fn() => (array) Helper::options()->plugin(self::NAME)->toArray(),
@@ -203,20 +202,26 @@ class VditorRenew_Plugin implements PluginInterface
 
     private static function clearConfigCache(): void
     {
-        try {
-            Cache::getInstance()->delete(self::CACHE_KEY);
-        } catch (Throwable $e) {
-            self::reportException('clearConfigCache', $e);
-        }
+        Pref::forget(
+            self::$runtimeSettings,
+            self::CACHE_KEY,
+            static function (string $scope, Throwable $e): void {
+                self::reportException('clearConfigCache.' . $scope, $e);
+            }
+        );
     }
 
     private static function ensureConfigStored(): void
     {
-        $defaults = self::normalize(self::defaults());
-        try {
-            $existing = (array) Helper::options()->plugin(self::NAME)->toArray();
-            $merged = self::normalize(array_merge($defaults, $existing));
-            \Widget\Plugins\Edit::configPlugin(self::NAME, [
+        Pref::sync(
+            self::NAME,
+            self::normalize(self::defaults()),
+            static fn(array $settings): array => self::normalize($settings),
+            static function (string $scope, Throwable $e): void {
+                self::reportException('ensureConfigStored.' . $scope, $e);
+            },
+            static function (array $merged): array {
+                return [
                 'enabled' => (string) $merged['enabled'],
                 'mode' => (string) $merged['mode'],
                 'legacy' => (string) $merged['legacy'],
@@ -226,10 +231,9 @@ class VditorRenew_Plugin implements PluginInterface
                 'editorHeight' => (string) $merged['editorHeight'],
                 'fullStrategy' => (string) $merged['fullStrategy'],
                 'toolbar' => (string) $merged['toolbar']
-            ]);
-        } catch (Throwable $e) {
-            self::reportException('ensureConfigStored', $e);
-        }
+                ];
+            }
+        );
     }
 
     private static function defaults(): array

@@ -34,7 +34,9 @@ class Plugin implements PluginInterface
         self::registerHooks();
         Log::createTables();
         Settings::ensureStored();
+        Helper::removeRoute('renew_seo_action');
         Helper::addRoute('renew_seo_action', '/action/renew-seo', Action::class, 'action');
+        Helper::removePanel(3, 'RenewSEO/Panel.php');
         Helper::addPanel(3, 'RenewSEO/Panel.php', 'SEO 中心', 'SEO 中心', 'administrator');
         Files::sync('activate', true);
         return _t('RenewSEO 已启用');
@@ -42,10 +44,8 @@ class Plugin implements PluginInterface
 
     public static function deactivate(): string
     {
-        Files::removeGenerated(Settings::load());
         Helper::removeRoute('renew_seo_action');
         Helper::removePanel(3, 'RenewSEO/Panel.php');
-        Settings::clear();
         return _t('RenewSEO 已停用');
     }
 

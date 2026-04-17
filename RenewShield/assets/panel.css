@@ -1,0 +1,767 @@
+.tr-panel-shield .tr-panel-pane {
+    min-width: 0;
+}
+
+.tr-panel-shield .shield-card {
+    background: var(--tr-surface);
+    border: 1px solid var(--tr-border);
+    border-radius: var(--tr-radius);
+    box-shadow: var(--tr-shadow-sm);
+    overflow: hidden;
+}
+
+.tr-panel-shield .shield-card + .shield-card {
+    margin-top: 16px;
+}
+
+.tr-panel-shield .shield-card-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--tr-border);
+    background: var(--tr-surface-2);
+}
+
+.tr-panel-shield .shield-card-pad {
+    padding: 16px;
+}
+
+.tr-panel-shield .shield-card-title {
+    margin: 0;
+    color: var(--tr-text-1);
+    font-size: 16px;
+    line-height: 1.3;
+}
+
+.tr-panel-shield .shield-card-desc {
+    margin: 6px 0 0;
+    color: var(--tr-text-2);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.tr-panel-shield .shield-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.tr-panel-shield .shield-list-item,
+.tr-panel-shield .shield-block-item {
+    padding: 18px 16px;
+    border-top: 1px solid var(--tr-border);
+}
+
+.tr-panel-shield .shield-list-item:first-child,
+.tr-panel-shield .shield-block-item:first-child {
+    border-top: 0;
+}
+
+.tr-panel-shield .shield-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.tr-panel-shield .shield-list-item-meta {
+    flex: 1;
+    min-width: 0;
+}
+
+.tr-panel-shield .shield-list-item-title {
+    margin: 0 0 4px;
+    color: var(--tr-text-1);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+.tr-panel-shield .shield-list-item-desc {
+    margin: 0;
+    color: var(--tr-text-2);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.tr-panel-shield .shield-list-item-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.tr-panel-shield .shield-block-item .shield-list-item-meta {
+    margin-bottom: 12px;
+}
+
+.tr-panel-shield .shield-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+}
+
+.tr-panel-shield .shield-access-guide {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.tr-panel-shield .shield-access-guide-item {
+    padding: 14px 16px;
+    border: 1px solid var(--tr-border);
+    border-radius: var(--tr-radius-sm);
+    background: var(--tr-surface-2);
+    min-width: 0;
+}
+
+.tr-panel-shield .shield-access-guide-item strong {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--tr-text-1);
+    font-size: 13px;
+}
+
+.tr-panel-shield .shield-access-guide-item p {
+    margin: 0;
+    color: var(--tr-text-2);
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.tr-panel-shield .shield-access-guide-desc {
+    color: var(--tr-text-2);
+}
+
+.tr-panel-shield .shield-access-guide-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.tr-panel-shield .shield-access-guide-tag {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: var(--tr-surface);
+    border: 1px solid var(--tr-border);
+    color: var(--tr-text-1);
+    font-size: 12px;
+    line-height: 1.4;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.tr-panel-shield .shield-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    align-items: start;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.tr-panel-shield .shield-grid-2 > * {
+    min-width: 0;
+}
+
+.tr-panel-shield .shield-grid-pad {
+    padding: 18px 16px;
+    border-top: 1px solid var(--tr-border);
+}
+
+.tr-panel-shield .shield-note-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.tr-panel-shield .shield-note {
+    padding: 14px 16px;
+    border: 1px solid var(--tr-border);
+    border-radius: var(--tr-radius-sm);
+    background: var(--tr-surface-2);
+}
+
+.tr-panel-shield .shield-note strong {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--tr-text-1);
+    font-size: 13px;
+}
+
+.tr-panel-shield .shield-note p {
+    margin: 0;
+    color: var(--tr-text-2);
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.tr-panel-shield .shield-profile-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 16px;
+    padding: 14px 16px;
+    border: 1px solid var(--tr-border);
+    border-radius: var(--tr-radius-sm);
+    background: var(--tr-surface-2);
+}
+
+.tr-panel-shield .shield-profile-copy {
+    min-width: 0;
+}
+
+.tr-panel-shield .shield-profile-copy strong {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--tr-text-1);
+    font-size: 13px;
+}
+
+.tr-panel-shield .shield-profile-copy p {
+    margin: 0;
+    color: var(--tr-text-2);
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.tr-panel-shield .shield-matrix {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 16px;
+    padding: 16px;
+    border: 1px solid var(--tr-border);
+    border-radius: var(--tr-radius-sm);
+    background: var(--tr-surface-2);
+}
+
+.tr-panel-shield .shield-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.tr-panel-shield .shield-field > span {
+    color: var(--tr-text-2);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.tr-panel-shield .shield-field-wide {
+    grid-column: span 2;
+}
+
+.tr-panel-shield .shield-input {
+    width: 100%;
+    max-width: 100%;
+    min-height: var(--tr-control-h);
+    padding: 8px 12px;
+    border: 1px solid var(--tr-border);
+    border-radius: 12px;
+    background: var(--tr-control-bg);
+    box-shadow: var(--tr-control-shadow);
+    box-sizing: border-box;
+    color: var(--tr-text-1);
+    font-size: 14px;
+    line-height: 1.5;
+    transition: border-color .18s ease, background-color .18s ease, box-shadow .18s ease;
+}
+
+.tr-panel-shield .shield-input:focus {
+    outline: none;
+    border-color: rgba(37, 99, 235, 0.35);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.tr-panel-shield textarea.shield-input {
+    min-height: 120px;
+    resize: vertical;
+    overflow: auto;
+    word-break: break-word;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 13px;
+}
+
+.tr-panel-shield .shield-switch {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    display: inline-flex;
+    flex-shrink: 0;
+}
+
+.tr-panel-shield .shield-switch input {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+}
+
+.tr-panel-shield .shield-slider {
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.12);
+    cursor: pointer;
+    transition: background-color .18s ease;
+}
+
+.tr-panel-shield .shield-slider::before {
+    content: "";
+    position: absolute;
+    left: 2px;
+    top: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
+    transition: transform .18s ease;
+}
+
+.tr-panel-shield .shield-switch input:checked + .shield-slider {
+    background: var(--tr-accent);
+}
+
+.tr-panel-shield .shield-switch input:checked + .shield-slider::before {
+    transform: translateX(20px);
+}
+
+.tr-panel-shield .shield-health-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+}
+
+.tr-panel-shield .shield-health {
+    padding: 16px;
+    border: 1px solid var(--tr-border);
+    border-radius: var(--tr-radius-sm);
+    background: var(--tr-surface-2);
+}
+
+.tr-panel-shield .shield-health-title {
+    margin: 0 0 6px;
+    color: var(--tr-text-1);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.tr-panel-shield .shield-health-text {
+    margin: 0;
+    color: var(--tr-text-2);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.tr-panel-shield .shield-health-ok {
+    background: rgba(34, 197, 94, 0.08);
+}
+
+.tr-panel-shield .shield-health-warn {
+    background: rgba(245, 158, 11, 0.10);
+}
+
+.tr-panel-shield .shield-health-error {
+    background: rgba(239, 68, 68, 0.10);
+}
+
+.tr-panel-shield .shield-overview {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.tr-panel-shield .shield-overview-card,
+.tr-panel-shield .shield-insight-card {
+    padding: 14px 16px;
+    border: 1px solid var(--tr-border);
+    border-radius: var(--tr-radius-sm);
+    background: var(--tr-surface-2);
+}
+
+.tr-panel-shield .shield-overview-card strong {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--tr-text-1);
+    font-size: 20px;
+    line-height: 1.2;
+}
+
+.tr-panel-shield .shield-overview-card span {
+    color: var(--tr-text-2);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.tr-panel-shield .shield-insight-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.tr-panel-shield .shield-insight-grid-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.tr-panel-shield .shield-insight-title {
+    margin: 0 0 10px;
+    color: var(--tr-text-1);
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.tr-panel-shield .shield-insight-empty {
+    margin: 0;
+    color: var(--tr-text-3);
+    font-size: 13px;
+}
+
+.tr-panel-shield .shield-insight-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.tr-panel-shield .shield-insight-list li {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--tr-text-2);
+    font-size: 13px;
+}
+
+.tr-panel-shield .shield-insight-list strong {
+    flex-shrink: 0;
+    color: var(--tr-text-1);
+}
+
+.tr-panel-shield .shield-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.tr-panel-shield .shield-toolbar-form,
+.tr-panel-shield .shield-toolbar-ops {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 0;
+    padding: 12px 14px;
+    border: 1px solid var(--tr-border);
+    border-radius: var(--tr-radius-sm);
+    background: var(--tr-surface-2);
+}
+
+.tr-panel-shield .shield-toolbar-main {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 150px)) minmax(220px, 1fr);
+    gap: 10px;
+    flex: 1 1 720px;
+    min-width: 0;
+}
+
+.tr-panel-shield .shield-toolbar-side,
+.tr-panel-shield .shield-toolbar-ops {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.tr-panel-shield .shield-toolbar-ops {
+    justify-content: flex-start;
+}
+
+.tr-panel-shield .shield-toolbar-side {
+    flex: 0 0 auto;
+}
+
+.tr-panel-shield .shield-toolbar-ops form {
+    margin: 0;
+}
+
+.tr-panel-shield .shield-unban-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    min-width: 0;
+}
+
+.tr-panel-shield .shield-input.w-ip {
+    width: 200px;
+    max-width: 100%;
+}
+
+.tr-panel-shield .shield-table-wrap {
+    overflow-x: auto;
+    margin-top: 16px;
+}
+
+.tr-panel-shield .shield-table {
+    margin: 0;
+    width: 100%;
+    table-layout: fixed;
+}
+
+.tr-panel-shield .shield-table th,
+.tr-panel-shield .shield-table td {
+    vertical-align: top;
+}
+
+.tr-panel-shield .shield-empty-cell {
+    padding: 0 !important;
+}
+
+.tr-panel-shield .shield-log-time {
+    width: 156px;
+    white-space: nowrap;
+    color: var(--tr-text-1);
+    font-variant-numeric: tabular-nums;
+}
+
+.tr-panel-shield .shield-log-scope {
+    width: 72px;
+    white-space: nowrap;
+}
+
+.tr-panel-shield .shield-log-target {
+    min-width: 260px;
+}
+
+.tr-panel-shield .shield-log-target strong,
+.tr-panel-shield .shield-log-target span,
+.tr-panel-shield .shield-log-target small {
+    display: block;
+}
+
+.tr-panel-shield .shield-log-target strong {
+    margin-bottom: 4px;
+    color: var(--tr-text-1);
+    font-size: 12px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.tr-panel-shield .shield-log-target span {
+    color: var(--tr-text-1);
+    line-height: 1.5;
+    word-break: break-all;
+}
+
+.tr-panel-shield .shield-log-target small {
+    margin-top: 4px;
+    color: var(--tr-text-3);
+    font-size: 12px;
+}
+
+.tr-panel-shield .shield-log-result {
+    width: 150px;
+    white-space: nowrap;
+    vertical-align: top !important;
+}
+
+.tr-panel-shield .shield-log-action {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 8px;
+    color: var(--tr-text-3);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.tr-panel-shield .shield-log-rule {
+    width: 150px;
+}
+
+.tr-panel-shield .shield-log-sub {
+    margin-top: 4px;
+    color: var(--tr-text-3);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.tr-panel-shield .shield-log-message {
+    min-width: 220px;
+    line-height: 1.6;
+}
+
+.tr-panel-shield .shield-log-detail {
+    width: 88px;
+}
+
+.tr-panel-shield .shield-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 26px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: var(--tr-surface-2);
+    color: var(--tr-text-2);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
+
+.tr-panel-shield .shield-badge-allow {
+    color: #047857;
+    background: rgba(16, 185, 129, 0.12);
+}
+
+.tr-panel-shield .shield-badge-challenge {
+    color: #b45309;
+    background: rgba(245, 158, 11, 0.14);
+}
+
+.tr-panel-shield .shield-badge-block {
+    color: #b91c1c;
+    background: rgba(239, 68, 68, 0.12);
+}
+
+.tr-panel-shield .shield-page-nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.tr-panel-shield .shield-page-status {
+    color: var(--tr-text-2);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.tr-panel-shield .shield-page-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.tr-panel-shield .shield-compact-list,
+.tr-panel-shield .shield-issue-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.tr-panel-shield .shield-compact-item,
+.tr-panel-shield .shield-issue-item {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    padding: 10px 12px;
+    border: 1px solid var(--tr-border);
+    border-radius: var(--tr-radius-sm);
+    background: var(--tr-surface-1);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.tr-panel-shield .shield-issue-item {
+    color: #b91c1c;
+}
+
+.tr-panel-shield .shield-detail-list {
+    margin: 0 0 10px 18px;
+    padding: 0;
+    color: var(--tr-text-2);
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.tr-panel-shield .tr-panel-sticky {
+    margin-top: 16px;
+}
+
+.tr-panel-shield .tr-panel-sticky.is-hidden {
+    display: none;
+}
+
+.tr-panel-shield .shield-sticky-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+@media (max-width: 1024px) {
+    .tr-panel-shield .shield-access-guide,
+    .tr-panel-shield .shield-toolbar-main,
+    .tr-panel-shield .shield-grid-2,
+    .tr-panel-shield .shield-note-grid,
+    .tr-panel-shield .shield-insight-grid,
+    .tr-panel-shield .shield-insight-grid-4,
+    .tr-panel-shield .shield-matrix {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .tr-panel-shield .shield-field-wide {
+        grid-column: span 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .tr-panel-shield .shield-list-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .tr-panel-shield .shield-list-item-control,
+    .tr-panel-shield .shield-toolbar-ops,
+    .tr-panel-shield .shield-toolbar-form,
+    .tr-panel-shield .shield-toolbar-side,
+    .tr-panel-shield .shield-access-guide,
+    .tr-panel-shield .shield-toolbar-main,
+    .tr-panel-shield .shield-grid-2,
+    .tr-panel-shield .shield-matrix,
+    .tr-panel-shield .shield-profile-bar,
+    .tr-panel-shield .shield-unban-form,
+    .tr-panel-shield .shield-sticky-actions {
+        width: 100%;
+    }
+
+    .tr-panel-shield .shield-toolbar-main,
+    .tr-panel-shield .shield-access-guide,
+    .tr-panel-shield .shield-grid-2,
+    .tr-panel-shield .shield-note-grid,
+    .tr-panel-shield .shield-insight-grid,
+    .tr-panel-shield .shield-insight-grid-4,
+    .tr-panel-shield .shield-matrix {
+        grid-template-columns: 1fr;
+    }
+
+    .tr-panel-shield .shield-overview {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .tr-panel-shield .shield-page-actions,
+    .tr-panel-shield .shield-page-nav {
+        justify-content: flex-start;
+    }
+
+    .tr-panel-shield .shield-profile-bar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+}

@@ -38,7 +38,7 @@ use TypechoPlugin\RenewSEO\Text;
                 <div class="renewseo-list-item">
                     <div class="renewseo-list-item-meta">
                         <h4 class="renewseo-list-item-title">异步推送</h4>
-                        <p class="renewseo-list-item-desc">使用非阻塞请求将数据推送到各大搜索引擎，提升保存响应速度。</p>
+                        <p class="renewseo-list-item-desc">采用异步请求方式执行已启用的搜索引擎推送任务，以缩短保存响应时间。</p>
                     </div>
                     <div class="renewseo-list-item-control">
                         <label class="renewseo-switch">
@@ -50,7 +50,7 @@ use TypechoPlugin\RenewSEO\Text;
                 <div class="renewseo-list-item">
                     <div class="renewseo-list-item-meta">
                         <h4 class="renewseo-list-item-title">面板每页数量</h4>
-                        <p class="renewseo-list-item-desc">控制 SEO 控制面板中显示的日志条数。</p>
+                        <p class="renewseo-list-item-desc">控制运行日志与 404 记录列表的单页显示数量。</p>
                     </div>
                     <div class="renewseo-list-item-control">
                         <input type="number" name="panelSize" min="10" max="200" value="<?php echo (int) $settings['panelSize']; ?>" class="renewseo-input w-short">
@@ -58,8 +58,8 @@ use TypechoPlugin\RenewSEO\Text;
                 </div>
                 <div class="renewseo-list-item">
                     <div class="renewseo-list-item-meta">
-                        <h4 class="renewseo-list-item-title">配置缓存秒数</h4>
-                        <p class="renewseo-list-item-desc">从数据库加载配置的防抖时间，减轻查询压力。</p>
+                        <h4 class="renewseo-list-item-title">配置缓存时长（秒）</h4>
+                        <p class="renewseo-list-item-desc">用于控制配置读取缓存时长，以减少频繁查询。</p>
                     </div>
                     <div class="renewseo-list-item-control">
                         <input type="number" name="cacheTtl" min="60" max="3600" value="<?php echo (int) $settings['cacheTtl']; ?>" class="renewseo-input w-short">
@@ -90,6 +90,54 @@ use TypechoPlugin\RenewSEO\Text;
                         <input type="number" name="notFoundKeepDays" min="0" max="3650" value="<?php echo (int) $settings['notFoundKeepDays']; ?>" class="renewseo-input w-short">
                     </div>
                 </div>
+                <div class="renewseo-list-item">
+                    <div class="renewseo-list-item-meta">
+                        <h4 class="renewseo-list-item-title">启用 404 监控</h4>
+                        <p class="renewseo-list-item-desc">记录缺失页面路径与命中次数，用于发现失效链接。</p>
+                    </div>
+                    <div class="renewseo-list-item-control">
+                        <label class="renewseo-switch">
+                            <input type="checkbox" name="notFoundEnable" value="1"<?php echo $settings['notFoundEnable'] === '1' ? ' checked' : ''; ?>>
+                            <span class="renewseo-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="renewseo-list-item">
+                    <div class="renewseo-list-item-meta">
+                        <h4 class="renewseo-list-item-title">404 访问 IP 脱敏</h4>
+                        <p class="renewseo-list-item-desc">记录 404 时对访问 IP 进行脱敏处理，仅保留统计所需信息。</p>
+                    </div>
+                    <div class="renewseo-list-item-control">
+                        <label class="renewseo-switch">
+                            <input type="checkbox" name="notFoundMaskIp" value="1"<?php echo $settings['notFoundMaskIp'] === '1' ? ' checked' : ''; ?>>
+                            <span class="renewseo-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="renewseo-list-item">
+                    <div class="renewseo-list-item-meta">
+                        <h4 class="renewseo-list-item-title">记录来源地址</h4>
+                        <p class="renewseo-list-item-desc">默认关闭，避免把外部来源地址长期保存在后台。</p>
+                    </div>
+                    <div class="renewseo-list-item-control">
+                        <label class="renewseo-switch">
+                            <input type="checkbox" name="notFoundStoreReferer" value="1"<?php echo $settings['notFoundStoreReferer'] === '1' ? ' checked' : ''; ?>>
+                            <span class="renewseo-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="renewseo-list-item">
+                    <div class="renewseo-list-item-meta">
+                        <h4 class="renewseo-list-item-title">记录访问标识（UA）</h4>
+                        <p class="renewseo-list-item-desc">默认关闭，仅在分析特定爬虫或异常访问来源时启用。</p>
+                    </div>
+                    <div class="renewseo-list-item-control">
+                        <label class="renewseo-switch">
+                            <input type="checkbox" name="notFoundStoreUa" value="1"<?php echo $settings['notFoundStoreUa'] === '1' ? ' checked' : ''; ?>>
+                            <span class="renewseo-slider"></span>
+                        </label>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -103,7 +151,7 @@ use TypechoPlugin\RenewSEO\Text;
                 <div class="renewseo-list-item">
                     <div class="renewseo-list-item-meta">
                         <h4 class="renewseo-list-item-title">启用 Robots</h4>
-                        <p class="renewseo-list-item-desc">生成虚拟的 robots.txt 文件来指引爬虫。</p>
+                        <p class="renewseo-list-item-desc">在站点根目录写入 robots.txt 文件，用于指引搜索引擎爬虫。</p>
                     </div>
                     <div class="renewseo-list-item-control">
                         <label class="renewseo-switch">
@@ -215,6 +263,17 @@ use TypechoPlugin\RenewSEO\Text;
                 </div>
                 <div class="renewseo-list-item">
                     <div class="renewseo-list-item-meta">
+                        <h4 class="renewseo-list-item-title">包含文章 (Post)</h4>
+                    </div>
+                    <div class="renewseo-list-item-control">
+                        <label class="renewseo-switch">
+                            <input type="checkbox" name="sitemapPost" value="1"<?php echo $settings['sitemapPost'] === '1' ? ' checked' : ''; ?>>
+                            <span class="renewseo-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="renewseo-list-item">
+                    <div class="renewseo-list-item-meta">
                         <h4 class="renewseo-list-item-title">包含页面 (Page)</h4>
                     </div>
                     <div class="renewseo-list-item-control">
@@ -259,7 +318,19 @@ use TypechoPlugin\RenewSEO\Text;
                 </div>
                 <div class="renewseo-list-item">
                     <div class="renewseo-list-item-meta">
-                        <h4 class="renewseo-list-item-title">自动重建防抖秒数</h4>
+                        <h4 class="renewseo-list-item-title">补充图片信息</h4>
+                        <p class="renewseo-list-item-desc">在现有 sitemap.xml 中为文章和页面补充图片地址信息</p>
+                    </div>
+                    <div class="renewseo-list-item-control">
+                        <label class="renewseo-switch">
+                            <input type="checkbox" name="sitemapImage" value="1"<?php echo $settings['sitemapImage'] === '1' ? ' checked' : ''; ?>>
+                            <span class="renewseo-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="renewseo-list-item">
+                    <div class="renewseo-list-item-meta">
+                        <h4 class="renewseo-list-item-title">自动重建间隔（秒）</h4>
                     </div>
                     <div class="renewseo-list-item-control">
                         <input type="number" name="sitemapDebounce" min="0" max="3600" value="<?php echo (int) $settings['sitemapDebounce']; ?>" class="renewseo-input w-short">
@@ -345,13 +416,13 @@ use TypechoPlugin\RenewSEO\Text;
     <div class="tr-panel-pane" data-tab="page">
         <div class="renewseo-card">
             <div class="renewseo-card-header">
-                <h3 class="renewseo-card-title">Meta / OG / Canonical</h3>
+                <h3 class="renewseo-card-title">页面元信息与规范化</h3>
             </div>
             <div class="renewseo-list">
                 <div class="renewseo-list-item">
                     <div class="renewseo-list-item-meta">
-                        <h4 class="renewseo-list-item-title">启用 Canonical</h4>
-                        <p class="renewseo-list-item-desc">为页面添加规范化链接，防止权重分散。</p>
+                        <h4 class="renewseo-list-item-title">启用 Canonical 规范化</h4>
+                        <p class="renewseo-list-item-desc">仅控制 RenewSEO 提供的 Canonical 规范化逻辑，不影响程序内核默认输出。</p>
                     </div>
                     <div class="renewseo-list-item-control">
                         <label class="renewseo-switch">
@@ -362,8 +433,8 @@ use TypechoPlugin\RenewSEO\Text;
                 </div>
                 <div class="renewseo-list-item">
                     <div class="renewseo-list-item-meta">
-                        <h4 class="renewseo-list-item-title">启用 Open Graph (OG)</h4>
-                        <p class="renewseo-list-item-desc">优化链接在社交媒体上的卡片展现。</p>
+                        <h4 class="renewseo-list-item-title">使用 RenewSEO 输出社交摘要标签</h4>
+                        <p class="renewseo-list-item-desc">开启后由 RenewSEO 输出 Open Graph 与 Twitter 卡片标签；关闭后回退到程序默认输出。</p>
                     </div>
                     <div class="renewseo-list-item-control">
                         <label class="renewseo-switch">
@@ -375,7 +446,7 @@ use TypechoPlugin\RenewSEO\Text;
                 <div class="renewseo-list-item">
                     <div class="renewseo-list-item-meta">
                         <h4 class="renewseo-list-item-title">启用时间因子</h4>
-                        <p class="renewseo-list-item-desc">仅在文章与独立页输出字节跳动时间 Meta 与百度 JSON-LD 时间因子。</p>
+                        <p class="renewseo-list-item-desc">为文章与独立页面输出字节跳动时间 Meta 与百度时间结构化数据。</p>
                     </div>
                     <div class="renewseo-list-item-control">
                         <label class="renewseo-switch">
@@ -408,6 +479,51 @@ use TypechoPlugin\RenewSEO\Text;
                 </div>
                 <div class="renewseo-list-item">
                     <div class="renewseo-list-item-meta">
+                        <h4 class="renewseo-list-item-title">分类页 noindex</h4>
+                    </div>
+                    <div class="renewseo-list-item-control">
+                        <label class="renewseo-switch">
+                            <input type="checkbox" name="noindexCategory" value="1"<?php echo $settings['noindexCategory'] === '1' ? ' checked' : ''; ?>>
+                            <span class="renewseo-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="renewseo-list-item">
+                    <div class="renewseo-list-item-meta">
+                        <h4 class="renewseo-list-item-title">标签页 noindex</h4>
+                    </div>
+                    <div class="renewseo-list-item-control">
+                        <label class="renewseo-switch">
+                            <input type="checkbox" name="noindexTag" value="1"<?php echo $settings['noindexTag'] === '1' ? ' checked' : ''; ?>>
+                            <span class="renewseo-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="renewseo-list-item">
+                    <div class="renewseo-list-item-meta">
+                        <h4 class="renewseo-list-item-title">作者页 noindex</h4>
+                    </div>
+                    <div class="renewseo-list-item-control">
+                        <label class="renewseo-switch">
+                            <input type="checkbox" name="noindexAuthor" value="1"<?php echo $settings['noindexAuthor'] === '1' ? ' checked' : ''; ?>>
+                            <span class="renewseo-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="renewseo-list-item">
+                    <div class="renewseo-list-item-meta">
+                        <h4 class="renewseo-list-item-title">分页归档 noindex</h4>
+                        <p class="renewseo-list-item-desc">对第 2 页及之后的归档分页输出 noindex,follow。</p>
+                    </div>
+                    <div class="renewseo-list-item-control">
+                        <label class="renewseo-switch">
+                            <input type="checkbox" name="noindexPaged" value="1"<?php echo $settings['noindexPaged'] === '1' ? ' checked' : ''; ?>>
+                            <span class="renewseo-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="renewseo-list-item">
+                    <div class="renewseo-list-item-meta">
                         <h4 class="renewseo-list-item-title">自动补全图片 Alt</h4>
                     </div>
                     <div class="renewseo-list-item-control">
@@ -419,7 +535,7 @@ use TypechoPlugin\RenewSEO\Text;
                 </div>
                 <div class="renewseo-list-item">
                     <div class="renewseo-list-item-meta">
-                        <h4 class="renewseo-list-item-title">默认 OG 图片</h4>
+                        <h4 class="renewseo-list-item-title">默认社交摘要图片</h4>
                     </div>
                     <div class="renewseo-list-item-control">
                         <input type="text" name="ogDefaultImage" value="<?php echo Text::e($settings['ogDefaultImage']); ?>" placeholder="https://example.com/og.jpg" class="renewseo-input w-medium">
@@ -439,6 +555,65 @@ use TypechoPlugin\RenewSEO\Text;
                         <p class="renewseo-list-item-desc">每行一个，支持通配符如 utm_*</p>
                     </div>
                     <textarea class="renewseo-input w-full" name="canonicalStrip" rows="4"><?php echo Text::e($settings['canonicalStrip']); ?></textarea>
+                </div>
+                <div class="renewseo-block-item">
+                    <div class="renewseo-list-item-meta">
+                        <h4 class="renewseo-list-item-title">Canonical 规范化规则</h4>
+                        <p class="renewseo-list-item-desc">用于统一站点 Host、分页参数与尾斜杠形式。</p>
+                    </div>
+                    <div class="renewseo-matrix">
+                        <div class="renewseo-field">
+                            <span>统一站点 Host</span>
+                            <label class="renewseo-switch">
+                                <input type="checkbox" name="canonicalHost" value="1"<?php echo $settings['canonicalHost'] === '1' ? ' checked' : ''; ?>>
+                                <span class="renewseo-slider"></span>
+                            </label>
+                        </div>
+                        <div class="renewseo-field">
+                            <span>去除 ?page=1</span>
+                            <label class="renewseo-switch">
+                                <input type="checkbox" name="canonicalPageOne" value="1"<?php echo $settings['canonicalPageOne'] === '1' ? ' checked' : ''; ?>>
+                                <span class="renewseo-slider"></span>
+                            </label>
+                        </div>
+                        <label class="renewseo-field">
+                            <span>尾斜杠策略</span>
+                            <select name="canonicalTrailingSlash" class="renewseo-input w-full">
+                                <option value="keep"<?php echo $settings['canonicalTrailingSlash'] === 'keep' ? ' selected' : ''; ?>>保持当前</option>
+                                <option value="add"<?php echo $settings['canonicalTrailingSlash'] === 'add' ? ' selected' : ''; ?>>统一补尾斜杠</option>
+                                <option value="remove"<?php echo $settings['canonicalTrailingSlash'] === 'remove' ? ' selected' : ''; ?>>统一去尾斜杠</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
+                <div class="renewseo-block-item">
+                    <div class="renewseo-list-item-meta">
+                        <h4 class="renewseo-list-item-title">结构化数据</h4>
+                        <p class="renewseo-list-item-desc">按需输出文章、面包屑与站点搜索相关的结构化数据。</p>
+                    </div>
+                    <div class="renewseo-matrix">
+                        <div class="renewseo-field">
+                            <span>文章结构化数据</span>
+                            <label class="renewseo-switch">
+                                <input type="checkbox" name="schemaArticle" value="1"<?php echo $settings['schemaArticle'] === '1' ? ' checked' : ''; ?>>
+                                <span class="renewseo-slider"></span>
+                            </label>
+                        </div>
+                        <div class="renewseo-field">
+                            <span>面包屑结构化数据</span>
+                            <label class="renewseo-switch">
+                                <input type="checkbox" name="schemaBreadcrumb" value="1"<?php echo $settings['schemaBreadcrumb'] === '1' ? ' checked' : ''; ?>>
+                                <span class="renewseo-slider"></span>
+                            </label>
+                        </div>
+                        <div class="renewseo-field">
+                            <span>站点搜索结构化数据</span>
+                            <label class="renewseo-switch">
+                                <input type="checkbox" name="schemaWebsiteSearch" value="1"<?php echo $settings['schemaWebsiteSearch'] === '1' ? ' checked' : ''; ?>>
+                                <span class="renewseo-slider"></span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -464,7 +639,7 @@ use TypechoPlugin\RenewSEO\Text;
                 <div class="renewseo-list-item group-baidu-push">
                     <div class="renewseo-list-item-meta">
                         <h4 class="renewseo-list-item-title">启用百度快速收录</h4>
-                        <p class="renewseo-list-item-desc">适合高时效、移动友好页面。</p>
+                        <p class="renewseo-list-item-desc">用于已开通快速收录权限的页面；未满足条件时将回退为普通推送。</p>
                     </div>
                     <div class="renewseo-list-item-control">
                         <label class="renewseo-switch">
@@ -475,7 +650,7 @@ use TypechoPlugin\RenewSEO\Text;
                 </div>
                 <div class="renewseo-list-item group-baidu-push">
                     <div class="renewseo-list-item-meta">
-                        <h4 class="renewseo-list-item-title">编辑内容也推送</h4>
+                        <h4 class="renewseo-list-item-title">编辑内容时同步推送</h4>
                     </div>
                     <div class="renewseo-list-item-control">
                         <label class="renewseo-switch">
@@ -486,7 +661,7 @@ use TypechoPlugin\RenewSEO\Text;
                 </div>
                 <div class="renewseo-list-item group-baidu-push">
                     <div class="renewseo-list-item-meta">
-                        <h4 class="renewseo-list-item-title">仅推送 N 天内内容</h4>
+                        <h4 class="renewseo-list-item-title">仅推送指定天数内内容</h4>
                     </div>
                     <div class="renewseo-list-item-control">
                         <input type="number" name="baiduDays" min="0" max="3650" value="<?php echo (int) $settings['baiduDays']; ?>" class="renewseo-input w-short">
@@ -509,7 +684,7 @@ use TypechoPlugin\RenewSEO\Text;
                 <div class="renewseo-list-item">
                     <div class="renewseo-list-item-meta">
                         <h4 class="renewseo-list-item-title">启用 IndexNow</h4>
-                        <p class="renewseo-list-item-desc">支持 Yandex, Bing 等协议的统一收录推送。</p>
+                        <p class="renewseo-list-item-desc">按 IndexNow 协议向支持该协议的搜索引擎提交更新通知。</p>
                     </div>
                     <div class="renewseo-list-item-control">
                         <label class="renewseo-switch">
@@ -520,7 +695,7 @@ use TypechoPlugin\RenewSEO\Text;
                 </div>
                 <div class="renewseo-list-item group-indexnow-push">
                     <div class="renewseo-list-item-meta">
-                        <h4 class="renewseo-list-item-title">编辑内容也推送</h4>
+                        <h4 class="renewseo-list-item-title">编辑内容时同步推送</h4>
                     </div>
                     <div class="renewseo-list-item-control">
                         <label class="renewseo-switch">
@@ -531,16 +706,16 @@ use TypechoPlugin\RenewSEO\Text;
                 </div>
                 <div class="renewseo-block-item group-indexnow-push">
                     <div class="renewseo-list-item-meta">
-                        <h4 class="renewseo-list-item-title">IndexNow Key</h4>
+                        <h4 class="renewseo-list-item-title">IndexNow 密钥</h4>
                     </div>
                     <input type="text" name="indexNowKey" value="<?php echo Text::e($settings['indexNowKey']); ?>" class="renewseo-input w-full">
                 </div>
                 <div class="renewseo-block-item group-indexnow-push">
                     <div class="renewseo-list-item-meta">
-                        <h4 class="renewseo-list-item-title">Key 文件相对路径</h4>
-                        <p class="renewseo-list-item-desc">留空表示站点根目录。</p>
+                        <h4 class="renewseo-list-item-title">密钥文件相对路径</h4>
+                        <p class="renewseo-list-item-desc">留空时自动使用根目录 `<key>.txt`；自定义时仅允许写入 `seo/` 目录下的 `.txt` 文件。</p>
                     </div>
-                    <input type="text" name="indexNowKeyPath" value="<?php echo Text::e($settings['indexNowKeyPath']); ?>" placeholder="可留空或填如 seo/indexnow-key.txt" class="renewseo-input w-full">
+                    <input type="text" name="indexNowKeyPath" value="<?php echo Text::e($settings['indexNowKeyPath']); ?>" placeholder="可留空或填如 seo/indexnow.txt" class="renewseo-input w-full">
                 </div>
             </div>
         </div>
@@ -563,7 +738,7 @@ use TypechoPlugin\RenewSEO\Text;
                 </div>
                 <div class="renewseo-list-item group-bing-push">
                     <div class="renewseo-list-item-meta">
-                        <h4 class="renewseo-list-item-title">编辑内容也推送</h4>
+                        <h4 class="renewseo-list-item-title">编辑内容时同步推送</h4>
                     </div>
                     <div class="renewseo-list-item-control">
                         <label class="renewseo-switch">
@@ -574,7 +749,7 @@ use TypechoPlugin\RenewSEO\Text;
                 </div>
                 <div class="renewseo-block-item group-bing-push">
                     <div class="renewseo-list-item-meta">
-                        <h4 class="renewseo-list-item-title">Bing API Key</h4>
+                        <h4 class="renewseo-list-item-title">Bing API 密钥</h4>
                     </div>
                     <input type="text" name="bingApiKey" value="<?php echo Text::e($settings['bingApiKey']); ?>" class="renewseo-input w-full">
                 </div>

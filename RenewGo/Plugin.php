@@ -217,7 +217,6 @@ class RenewGo_Plugin implements PluginInterface
 
     public static function configHandle(array &$settings, bool $isInit)
     {
-        unset($isInit);
         $settings = self::normalize($settings);
         \Widget\Plugins\Edit::configPlugin(self::NAME, $settings);
         self::clearConfigCache();
@@ -924,33 +923,26 @@ class RenewGo_Plugin implements PluginInterface
 
     private static function ensureConfigStored(): void
     {
-        $defaults = self::defaults();
-        $raw = [];
-        try {
-            $raw = (array) Helper::options()->plugin(self::NAME)->toArray();
-        } catch (Throwable $e) {
-            $raw = [];
-            self::reportException('ensureConfigStored.read', $e);
-        }
-        $merged = self::normalize(array_merge($defaults, $raw));
-        try {
-            \Widget\Plugins\Edit::configPlugin(self::NAME, $merged);
-        } catch (Throwable $e) {
-            self::reportException('ensureConfigStored.save', $e);
-        }
+        Pref::sync(
+            self::NAME,
+            self::defaults(),
+            static fn(array $settings): array => self::normalize($settings),
+            static function (string $scope, Throwable $e): void {
+                self::reportException('ensureConfigStored.' . $scope, $e);
+            }
+        );
     }
 
     private static function clearConfigCache(): void
     {
-        Pref::clear(
+        Pref::forget(
+            self::$runtimeSettings,
             self::CACHE_KEY,
             static function (string $scope, Throwable $e): void {
                 self::reportException('clearConfigCache.' . $scope, $e);
             }
         );
-        self::$runtimeSettings = null;
         self::$runtimeRules = [];
-        \Widget\Options::destroy();
     }
 
     private static function isEnabled(array $settings): bool

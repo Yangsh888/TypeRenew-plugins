@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace TypechoPlugin\RenewSEO;
 
-use Typecho\Common;
 use Typecho\Db;
 use Typecho\Router;
 
@@ -38,7 +37,7 @@ class Files
             ];
 
             if (($settings['robotsEnable'] ?? '1') === '1') {
-                self::writeFile('robots.txt', self::buildRobots($settings));
+                self::writeRelativeFile('robots.txt', self::buildRobots($settings));
                 $result['robots'] = true;
             } else {
                 self::deleteRelative('robots.txt');
@@ -55,13 +54,13 @@ class Files
 
             if (($settings['indexNowEnable'] ?? '0') === '1' && !empty($settings['indexNowKey'])) {
                 $relative = Settings::keyRelativePath($settings);
-                if ($relative !== '') {
+                if ($relative !== '' && Settings::isManagedKeyPath($relative, $settings)) {
                     self::writeRelativeFile($relative, (string) $settings['indexNowKey']);
                     $result['key'] = true;
                 }
             } else {
                 $relative = Settings::keyRelativePath($settings);
-                if ($relative !== '') {
+                if ($relative !== '' && Settings::isManagedKeyPath($relative, $settings)) {
                     self::deleteRelative($relative);
                 }
             }
@@ -134,11 +133,7 @@ class Files
         $mode = (string) ($settings['robotsMode'] ?? 'default_only');
         $default = (string) ($settings['robotsDefault'] ?? 'allow');
 
-        $lines = [
-            '# RenewSEO generated robots.txt',
-            '# ' . date('Y-m-d H:i:s'),
-            '',
-        ];
+        $lines = [];
 
         foreach ($allowed as $agent) {
             $lines[] = 'User-agent: ' . $agent;
@@ -291,7 +286,10 @@ class Files
     {
         $oldKey = Settings::keyRelativePath($old);
         $newKey = Settings::keyRelativePath($new);
-        if ($oldKey !== '' && $oldKey !== $newKey) {
+        if ($oldKey !== ''
+            && $oldKey !== $newKey
+            && Settings::isManagedKeyPath($oldKey, $old)
+        ) {
             self::deleteRelative($oldKey);
         }
     }
@@ -304,7 +302,7 @@ class Files
         self::deleteRelative('sitemap.txt');
         self::removeChunkFiles();
         $key = Settings::keyRelativePath($settings);
-        if ($key !== '') {
+        if ($key !== '' && Settings::isManagedKeyPath($key, $settings)) {
             self::deleteRelative($key);
         }
     }
@@ -317,23 +315,23 @@ class Files
         self::removeChunkFiles();
 
         if (count($chunks) <= 1) {
-            self::writeFile('sitemap.xml', self::buildUrlset($chunks[0] ?? []));
+            self::writeRelativeFile('sitemap.xml', self::buildUrlset($chunks[0] ?? []));
         } else {
             $index = [];
             foreach ($chunks as $offset => $chunk) {
                 $name = 'sitemap-' . ($offset + 1) . '.xml';
-                self::writeFile($name, self::buildUrlset($chunk));
+                self::writeRelativeFile($name, self::buildUrlset($chunk));
                 $index[] = [
                     'loc' => Settings::rootUrl($name),
                     'lastmod' => date('c'),
                 ];
             }
-            self::writeFile('sitemap.xml', self::buildIndex($index));
+            self::writeRelativeFile('sitemap.xml', self::buildIndex($index));
         }
 
         if (($settings['sitemapTxt'] ?? '1') === '1') {
             $lines = array_map(static fn(array $item): string => (string) $item['loc'], array_values($items));
-            self::writeFile('sitemap.txt', implode("\n", $lines) . "\n");
+            self::writeRelativeFile('sitemap.txt', implode("\n", $lines) . "\n");
         } else {
             self::deleteRelative('sitemap.txt');
         }
@@ -363,11 +361,17 @@ class Files
 
         $db = Db::get();
         $contents = $db->fetchAll(
-            $db->select('cid', 'slug', 'type', 'created', 'modified')
+            $db->select('cid', 'slug', 'type', 'created', 'modified', 'text')
                 ->from('table.contents')
                 ->where('status = ? AND type IN (?, ?)', 'publish', 'post', 'page')
                 ->order('modified', Db::SORT_DESC)
         );
+
+        $contentIds = array_values(array_filter(array_map(
+            static fn(array $row): int => (int) ($row['cid'] ?? 0),
+            $contents
+        )));
+        $contentFields = self::contentFields($contentIds);
 
         foreach ($contents as $row) {
             $url = self::contentUrl($row);
@@ -375,14 +379,23 @@ class Files
                 continue;
             }
             $isPage = (string) $row['type'] === 'page';
+            if (!$isPage && ($settings['sitemapPost'] ?? '1') !== '1') {
+                continue;
+            }
             if ($isPage && ($settings['sitemapPage'] ?? '1') !== '1') {
                 continue;
             }
+            $cid = (int) ($row['cid'] ?? 0);
+            $fields = $contentFields[$cid] ?? [];
+            $image = ($settings['sitemapImage'] ?? '1') === '1'
+                ? Meta::sitemapImage($row, $fields, $settings)
+                : '';
             self::add($items, [
                 'loc' => $url,
                 'lastmod' => date('c', max((int) ($row['modified'] ?? 0), (int) ($row['created'] ?? 0), $now)),
                 'priority' => (string) ($isPage ? ($settings['sitemapPriorityPage'] ?? '0.7') : ($settings['sitemapPriorityPost'] ?? '0.8')),
                 'changefreq' => (string) ($isPage ? ($settings['sitemapFreqPage'] ?? 'monthly') : ($settings['sitemapFreqPost'] ?? 'weekly')),
+                'image' => $image,
             ]);
         }
 
@@ -468,13 +481,31 @@ class Files
     private static function buildUrlset(array $items): string
     {
         $xml = ['<?xml version="1.0" encoding="UTF-8"?>'];
-        $xml[] = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
+        $hasImage = false;
+        foreach ($items as $item) {
+            if (!empty($item['image'])) {
+                $hasImage = true;
+                break;
+            }
+        }
+
+        $urlset = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"';
+        if ($hasImage) {
+            $urlset .= ' xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"';
+        }
+        $urlset .= '>';
+        $xml[] = $urlset;
         foreach ($items as $item) {
             $xml[] = '  <url>';
             $xml[] = '    <loc>' . self::xml((string) $item['loc']) . '</loc>';
             $xml[] = '    <lastmod>' . self::xml((string) $item['lastmod']) . '</lastmod>';
             $xml[] = '    <changefreq>' . self::xml((string) $item['changefreq']) . '</changefreq>';
             $xml[] = '    <priority>' . self::xml((string) $item['priority']) . '</priority>';
+            if (!empty($item['image'])) {
+                $xml[] = '    <image:image>';
+                $xml[] = '      <image:loc>' . self::xml((string) $item['image']) . '</image:loc>';
+                $xml[] = '    </image:image>';
+            }
             $xml[] = '  </url>';
         }
         $xml[] = '</urlset>';
@@ -518,6 +549,34 @@ class Files
         return htmlspecialchars($value, ENT_QUOTES | ENT_XML1, 'UTF-8');
     }
 
+    private static function contentFields(array $cids): array
+    {
+        if (empty($cids)) {
+            return [];
+        }
+
+        $rows = Db::get()->fetchAll(
+            Db::get()->select('cid', 'name', 'type', 'str_value', 'int_value', 'float_value')
+                ->from('table.fields')
+                ->where('cid IN ?', $cids)
+        );
+
+        $fields = [];
+        foreach ($rows as $row) {
+            $cid = (int) ($row['cid'] ?? 0);
+            if ($cid <= 0) {
+                continue;
+            }
+            $type = (string) ($row['type'] ?? 'str');
+            $value = $type === 'json'
+                ? json_decode((string) ($row['str_value'] ?? ''), true)
+                : ($row[$type . '_value'] ?? null);
+            $fields[$cid][(string) ($row['name'] ?? '')] = $value;
+        }
+
+        return $fields;
+    }
+
     private static function toLines(string $value): array
     {
         $lines = preg_split('/\r\n|\r|\n/', $value) ?: [];
@@ -536,11 +595,6 @@ class Files
         foreach (glob(Settings::rootPath('sitemap-*.xml')) ?: [] as $file) {
             @unlink($file);
         }
-    }
-
-    private static function writeFile(string $name, string $content): void
-    {
-        self::writeRelativeFile($name, $content);
     }
 
     private static function deleteRelative(string $relative): void

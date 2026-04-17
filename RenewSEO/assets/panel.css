@@ -1,9 +1,17 @@
+.tr-panel-seo .tr-panel-pane {
+    min-width: 0;
+}
+
 .tr-panel-seo .renewseo-card {
     background: var(--tr-surface);
     border: 1px solid var(--tr-border);
     border-radius: var(--tr-radius);
     box-shadow: var(--tr-shadow-sm);
     overflow: hidden;
+}
+
+.tr-panel-seo .renewseo-card + .renewseo-card {
+    margin-top: 16px;
 }
 
 .tr-panel-seo .renewseo-card-header {
@@ -166,7 +174,7 @@
 }
 
 .tr-panel-seo .renewseo-preview {
-    margin: 18px 16px 0;
+    margin: 18px 16px 16px;
     padding: 16px;
     border: 1px solid var(--tr-border);
     border-radius: 12px;
@@ -265,33 +273,9 @@
     color: var(--tr-text-2);
 }
 
-.tr-panel-seo .renewseo-empty-cell {
-    padding: 0 !important;
-}
-
 .tr-panel-seo .tr-panel-file-link svg {
     width: 16px;
     height: 16px;
-}
-
-.hidden-smooth {
-    max-height: 0 !important;
-    opacity: 0 !important;
-    overflow: hidden !important;
-    margin: 0 !important;
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-    border-top-width: 0 !important;
-    border-bottom-width: 0 !important;
-    pointer-events: none !important;
-    transition: all .18s ease !important;
-}
-
-.visible-smooth {
-    max-height: 1000px;
-    opacity: 1;
-    overflow: visible;
-    transition: all .18s ease;
 }
 
 @media (max-width: 768px) {

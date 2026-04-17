@@ -31,33 +31,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const groupElements = document.querySelectorAll('.' + toggle.groupClass);
 
-        const updateVisibility = (checked, initial = false) => {
+        const updateVisibility = checked => {
             groupElements.forEach(el => {
-                if (checked) {
-                    el.style.display = '';
-                    setTimeout(() => {
-                        el.classList.remove('hidden-smooth');
-                        if (!initial) {
-                            el.classList.add('visible-smooth');
-                        }
-                    }, 10);
-                } else {
-                    el.classList.add('hidden-smooth');
-                    el.classList.remove('visible-smooth');
-                    if (!initial) {
-                        setTimeout(() => {
-                            if (el.classList.contains('hidden-smooth')) {
-                                el.style.display = 'none';
-                            }
-                        }, 200);
-                    } else {
-                        el.style.display = 'none';
-                    }
-                }
+                el.style.display = checked ? '' : 'none';
             });
         };
 
-        updateVisibility(checkbox.checked, true);
+        updateVisibility(checkbox.checked);
 
         checkbox.addEventListener('change', function() {
             updateVisibility(this.checked);

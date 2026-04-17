@@ -8,7 +8,6 @@ use Typecho\Common;
 use Typecho\Plugin\Exception as PluginException;
 use Utils\Helper;
 use Utils\Pref;
-use Widget\Options;
 
 if (!defined('__TYPECHO_ROOT_DIR__')) {
     exit;
@@ -54,6 +53,10 @@ class Settings
             'logKeepDays' => 30,
             'notFoundKeepDays' => 30,
             'logAutoClean' => '1',
+            'notFoundEnable' => '1',
+            'notFoundMaskIp' => '1',
+            'notFoundStoreReferer' => '0',
+            'notFoundStoreUa' => '0',
             'pushAsync' => '1',
             'pushTimeout' => 10,
             'robotsEnable' => '1',
@@ -69,10 +72,12 @@ class Settings
             'sitemapTxt' => '1',
             'sitemapSplit' => 1000,
             'sitemapDebounce' => 15,
+            'sitemapPost' => '1',
             'sitemapPage' => '1',
             'sitemapCategory' => '1',
-            'sitemapTag' => '1',
+            'sitemapTag' => '0',
             'sitemapAuthor' => '0',
+            'sitemapImage' => '1',
             'sitemapPriorityHome' => '1.0',
             'sitemapPriorityPost' => '0.8',
             'sitemapPriorityPage' => '0.7',
@@ -85,12 +90,22 @@ class Settings
             'sitemapFreqTaxonomy' => 'daily',
             'ogEnable' => '1',
             'ogDefaultImage' => '',
-            'timeEnable' => '1',
+            'timeEnable' => '0',
+            'schemaArticle' => '1',
+            'schemaBreadcrumb' => '1',
+            'schemaWebsiteSearch' => '1',
             'canonicalEnable' => '1',
+            'canonicalHost' => '1',
+            'canonicalPageOne' => '1',
+            'canonicalTrailingSlash' => 'keep',
             'canonicalStrip' => 'utm_source,utm_medium,utm_campaign,utm_term,utm_content,spm,from,ref',
             'noindexSearch' => '1',
             'noindex404' => '1',
-            'altEnable' => '1',
+            'noindexCategory' => '0',
+            'noindexTag' => '1',
+            'noindexAuthor' => '1',
+            'noindexPaged' => '1',
+            'altEnable' => '0',
             'altTemplate' => '{title} - {site}',
             'baiduEnable' => '0',
             'baiduToken' => '',
@@ -100,10 +115,55 @@ class Settings
             'indexNowEnable' => '0',
             'indexNowKey' => '',
             'indexNowKeyPath' => '',
-            'indexNowOnEdit' => '1',
+            'indexNowOnEdit' => '0',
             'bingEnable' => '0',
             'bingApiKey' => '',
-            'bingOnEdit' => '1',
+            'bingOnEdit' => '0',
+        ];
+    }
+
+    public static function boolKeys(): array
+    {
+        return [
+            'enabled',
+            'logAutoClean',
+            'notFoundEnable',
+            'notFoundMaskIp',
+            'notFoundStoreReferer',
+            'notFoundStoreUa',
+            'pushAsync',
+            'robotsEnable',
+            'robotsSitemap',
+            'sitemapEnable',
+            'sitemapTxt',
+            'sitemapPost',
+            'sitemapPage',
+            'sitemapCategory',
+            'sitemapTag',
+            'sitemapAuthor',
+            'sitemapImage',
+            'ogEnable',
+            'timeEnable',
+            'schemaArticle',
+            'schemaBreadcrumb',
+            'schemaWebsiteSearch',
+            'canonicalEnable',
+            'canonicalHost',
+            'canonicalPageOne',
+            'noindexSearch',
+            'noindex404',
+            'noindexCategory',
+            'noindexTag',
+            'noindexAuthor',
+            'noindexPaged',
+            'altEnable',
+            'baiduEnable',
+            'baiduQuick',
+            'baiduPushOnEdit',
+            'indexNowEnable',
+            'indexNowOnEdit',
+            'bingEnable',
+            'bingOnEdit',
         ];
     }
 
@@ -112,30 +172,9 @@ class Settings
         $d = self::defaults();
         $settings = array_merge($d, $settings);
 
-        $settings['enabled'] = self::bool($settings['enabled'] ?? '1');
-        $settings['logAutoClean'] = self::bool($settings['logAutoClean'] ?? '1');
-        $settings['pushAsync'] = self::bool($settings['pushAsync'] ?? '1');
-        $settings['robotsEnable'] = self::bool($settings['robotsEnable'] ?? '1');
-        $settings['robotsSitemap'] = self::bool($settings['robotsSitemap'] ?? '1');
-        $settings['sitemapEnable'] = self::bool($settings['sitemapEnable'] ?? '1');
-        $settings['sitemapTxt'] = self::bool($settings['sitemapTxt'] ?? '1');
-        $settings['sitemapPage'] = self::bool($settings['sitemapPage'] ?? '1');
-        $settings['sitemapCategory'] = self::bool($settings['sitemapCategory'] ?? '1');
-        $settings['sitemapTag'] = self::bool($settings['sitemapTag'] ?? '1');
-        $settings['sitemapAuthor'] = self::bool($settings['sitemapAuthor'] ?? '0');
-        $settings['ogEnable'] = self::bool($settings['ogEnable'] ?? '1');
-        $settings['timeEnable'] = self::bool($settings['timeEnable'] ?? '1');
-        $settings['canonicalEnable'] = self::bool($settings['canonicalEnable'] ?? '1');
-        $settings['noindexSearch'] = self::bool($settings['noindexSearch'] ?? '1');
-        $settings['noindex404'] = self::bool($settings['noindex404'] ?? '1');
-        $settings['altEnable'] = self::bool($settings['altEnable'] ?? '1');
-        $settings['baiduEnable'] = self::bool($settings['baiduEnable'] ?? '0');
-        $settings['baiduQuick'] = self::bool($settings['baiduQuick'] ?? '0');
-        $settings['baiduPushOnEdit'] = self::bool($settings['baiduPushOnEdit'] ?? '0');
-        $settings['indexNowEnable'] = self::bool($settings['indexNowEnable'] ?? '0');
-        $settings['indexNowOnEdit'] = self::bool($settings['indexNowOnEdit'] ?? '1');
-        $settings['bingEnable'] = self::bool($settings['bingEnable'] ?? '0');
-        $settings['bingOnEdit'] = self::bool($settings['bingOnEdit'] ?? '1');
+        foreach (self::boolKeys() as $key) {
+            $settings[$key] = self::bool($settings[$key] ?? ($d[$key] ?? '0'));
+        }
 
         $settings['panelSize'] = self::int($settings['panelSize'] ?? 40, 10, 200, 40);
         $settings['cacheTtl'] = self::int($settings['cacheTtl'] ?? 300, 60, 3600, 300);
@@ -158,6 +197,8 @@ class Settings
         $settings['robotsCustomSitemaps'] = self::urls($settings['robotsCustomSitemaps'] ?? '', 20);
         $settings['ogDefaultImage'] = self::urlOrRelative($settings['ogDefaultImage'] ?? '', 1024);
         $settings['canonicalStrip'] = self::lines(str_replace(',', "\n", (string) ($settings['canonicalStrip'] ?? '')), 64, 50);
+        $settings['canonicalTrailingSlash'] = in_array((string) $settings['canonicalTrailingSlash'], ['keep', 'add', 'remove'], true)
+            ? (string) $settings['canonicalTrailingSlash'] : 'keep';
         $settings['altTemplate'] = self::text($settings['altTemplate'] ?? '{title} - {site}', 120);
         $settings['baiduToken'] = self::text($settings['baiduToken'] ?? '', 200);
         $settings['indexNowKey'] = self::token($settings['indexNowKey'] ?? '');
@@ -196,16 +237,20 @@ class Settings
 
     public static function ensureStored(): void
     {
-        $raw = self::readStored('ensureStored.read');
-        \Widget\Plugins\Edit::configPlugin(self::NAME, self::normalize(array_merge(self::defaults(), $raw)));
+        Pref::sync(
+            self::NAME,
+            self::defaults(),
+            [self::class, 'normalize'],
+            [self::class, 'report'],
+            null,
+            static fn(): array => self::readStored('ensureStored.read')
+        );
         self::clear();
     }
 
     public static function clear(): void
     {
-        Pref::clear(self::CACHE_KEY, [self::class, 'report']);
-        self::$runtime = null;
-        Options::destroy();
+        Pref::forget(self::$runtime, self::CACHE_KEY, [self::class, 'report']);
     }
 
     public static function options()
@@ -319,6 +364,26 @@ class Settings
         }
 
         return $key . '.txt';
+    }
+
+    public static function isManagedKeyPath(string $relative, array $settings): bool
+    {
+        $relative = ltrim(str_replace('\\', '/', trim($relative)), '/');
+        if ($relative === '') {
+            return false;
+        }
+
+        $default = '';
+        $key = (string) ($settings['indexNowKey'] ?? '');
+        if ($key !== '') {
+            $default = $key . '.txt';
+        }
+
+        if ($default !== '' && $relative === $default) {
+            return true;
+        }
+
+        return preg_match('#^seo/[a-z0-9][a-z0-9._-]{0,190}\.txt$#i', $relative) === 1;
     }
 
     public static function report(string $scope, \Throwable $e): void
@@ -449,15 +514,25 @@ class Settings
     private static function relativeFile($value): string
     {
         $value = trim(str_replace('\\', '/', (string) $value));
-        $value = ltrim($value, '/');
         if ($value === '') {
             return '';
         }
         if (strpos($value, '..') !== false) {
             return '';
         }
-        $value = preg_replace('/[^a-zA-Z0-9_\-\/\.]/', '', $value) ?? '';
-        return Text::slice($value, 255);
+
+        $name = basename(ltrim($value, '/'));
+        $name = preg_replace('/[^a-zA-Z0-9._-]/', '', $name) ?? '';
+        $name = trim($name, '.');
+        if ($name === '') {
+            return '';
+        }
+
+        if (!str_ends_with(strtolower($name), '.txt')) {
+            $name .= '.txt';
+        }
+
+        return 'seo/' . Text::slice($name, 200);
     }
 
     private static function priority($value, string $default): string

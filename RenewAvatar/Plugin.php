@@ -491,31 +491,27 @@ class RenewAvatar_Plugin implements PluginInterface
 
     private static function ensureConfigStored(): void
     {
-        try {
-            $existing = (array) Widget_Options::alloc()->plugin(self::NAME)->toArray();
-            $merged = self::normalize(array_merge(self::defaults(), $existing));
-        } catch (Throwable $e) {
-            $merged = self::defaults();
-            self::reportException('ensureConfigStored.load', $e);
-        }
-
-        try {
-            \Widget\Plugins\Edit::configPlugin(self::NAME, $merged);
-        } catch (Throwable $e) {
-            self::reportException('ensureConfigStored.save', $e);
-        }
+        Pref::sync(
+            self::NAME,
+            self::defaults(),
+            static fn(array $settings): array => self::normalize($settings),
+            static function (string $scope, Throwable $e): void {
+                self::reportException('ensureConfigStored.' . $scope, $e);
+            },
+            null,
+            static fn(): array => (array) Widget_Options::alloc()->plugin(self::NAME)->toArray()
+        );
     }
 
     private static function clearCache(): void
     {
-        Pref::clear(
+        Pref::forget(
+            self::$runtimeSettings,
             self::CACHE_KEY,
             static function (string $scope, Throwable $e): void {
                 self::reportException('clearCache.' . $scope, $e);
             }
         );
-        self::$runtimeSettings = null;
-        \Widget\Options::destroy();
     }
 
     private static function cacheGet(string $key): ?string
