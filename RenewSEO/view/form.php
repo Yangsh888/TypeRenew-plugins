@@ -707,15 +707,9 @@ use TypechoPlugin\RenewSEO\Text;
                 <div class="renewseo-block-item group-indexnow-push">
                     <div class="renewseo-list-item-meta">
                         <h4 class="renewseo-list-item-title">IndexNow 密钥</h4>
+                        <p class="renewseo-list-item-desc">插件会在站点根目录生成并维护 `<key>.txt` 验证文件。</p>
                     </div>
                     <input type="text" name="indexNowKey" value="<?php echo Text::e($settings['indexNowKey']); ?>" class="renewseo-input w-full">
-                </div>
-                <div class="renewseo-block-item group-indexnow-push">
-                    <div class="renewseo-list-item-meta">
-                        <h4 class="renewseo-list-item-title">密钥文件相对路径</h4>
-                        <p class="renewseo-list-item-desc">留空时自动使用根目录 `<key>.txt`；自定义时仅允许写入 `seo/` 目录下的 `.txt` 文件。</p>
-                    </div>
-                    <input type="text" name="indexNowKeyPath" value="<?php echo Text::e($settings['indexNowKeyPath']); ?>" placeholder="可留空或填如 seo/indexnow.txt" class="renewseo-input w-full">
                 </div>
             </div>
         </div>

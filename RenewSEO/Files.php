@@ -54,13 +54,13 @@ class Files
 
             if (($settings['indexNowEnable'] ?? '0') === '1' && !empty($settings['indexNowKey'])) {
                 $relative = Settings::keyRelativePath($settings);
-                if ($relative !== '' && Settings::isManagedKeyPath($relative, $settings)) {
+                if ($relative !== '') {
                     self::writeRelativeFile($relative, (string) $settings['indexNowKey']);
                     $result['key'] = true;
                 }
             } else {
                 $relative = Settings::keyRelativePath($settings);
-                if ($relative !== '' && Settings::isManagedKeyPath($relative, $settings)) {
+                if ($relative !== '') {
                     self::deleteRelative($relative);
                 }
             }
@@ -286,10 +286,7 @@ class Files
     {
         $oldKey = Settings::keyRelativePath($old);
         $newKey = Settings::keyRelativePath($new);
-        if ($oldKey !== ''
-            && $oldKey !== $newKey
-            && Settings::isManagedKeyPath($oldKey, $old)
-        ) {
+        if ($oldKey !== '' && $oldKey !== $newKey) {
             self::deleteRelative($oldKey);
         }
     }
@@ -302,7 +299,7 @@ class Files
         self::deleteRelative('sitemap.txt');
         self::removeChunkFiles();
         $key = Settings::keyRelativePath($settings);
-        if ($key !== '' && Settings::isManagedKeyPath($key, $settings)) {
+        if ($key !== '') {
             self::deleteRelative($key);
         }
     }

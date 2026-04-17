@@ -114,7 +114,6 @@ class Settings
             'baiduPushOnEdit' => '0',
             'indexNowEnable' => '0',
             'indexNowKey' => '',
-            'indexNowKeyPath' => '',
             'indexNowOnEdit' => '0',
             'bingEnable' => '0',
             'bingApiKey' => '',
@@ -202,7 +201,7 @@ class Settings
         $settings['altTemplate'] = self::text($settings['altTemplate'] ?? '{title} - {site}', 120);
         $settings['baiduToken'] = self::text($settings['baiduToken'] ?? '', 200);
         $settings['indexNowKey'] = self::token($settings['indexNowKey'] ?? '');
-        $settings['indexNowKeyPath'] = self::relativeFile($settings['indexNowKeyPath'] ?? '');
+        unset($settings['indexNowKeyPath']);
         $settings['bingApiKey'] = self::text($settings['bingApiKey'] ?? '', 255);
 
         foreach ([
@@ -354,36 +353,7 @@ class Settings
     public static function keyRelativePath(array $settings): string
     {
         $key = (string) ($settings['indexNowKey'] ?? '');
-        if ($key === '') {
-            return '';
-        }
-
-        $custom = trim((string) ($settings['indexNowKeyPath'] ?? ''));
-        if ($custom !== '') {
-            return ltrim(str_replace('\\', '/', $custom), '/');
-        }
-
-        return $key . '.txt';
-    }
-
-    public static function isManagedKeyPath(string $relative, array $settings): bool
-    {
-        $relative = ltrim(str_replace('\\', '/', trim($relative)), '/');
-        if ($relative === '') {
-            return false;
-        }
-
-        $default = '';
-        $key = (string) ($settings['indexNowKey'] ?? '');
-        if ($key !== '') {
-            $default = $key . '.txt';
-        }
-
-        if ($default !== '' && $relative === $default) {
-            return true;
-        }
-
-        return preg_match('#^seo/[a-z0-9][a-z0-9._-]{0,190}\.txt$#i', $relative) === 1;
+        return $key === '' ? '' : $key . '.txt';
     }
 
     public static function report(string $scope, \Throwable $e): void
@@ -509,30 +479,6 @@ class Settings
     {
         $value = preg_replace('/[^a-zA-Z0-9\-]/', '', (string) $value) ?? '';
         return Text::slice($value, 128);
-    }
-
-    private static function relativeFile($value): string
-    {
-        $value = trim(str_replace('\\', '/', (string) $value));
-        if ($value === '') {
-            return '';
-        }
-        if (strpos($value, '..') !== false) {
-            return '';
-        }
-
-        $name = basename(ltrim($value, '/'));
-        $name = preg_replace('/[^a-zA-Z0-9._-]/', '', $name) ?? '';
-        $name = trim($name, '.');
-        if ($name === '') {
-            return '';
-        }
-
-        if (!str_ends_with(strtolower($name), '.txt')) {
-            $name .= '.txt';
-        }
-
-        return 'seo/' . Text::slice($name, 200);
     }
 
     private static function priority($value, string $default): string

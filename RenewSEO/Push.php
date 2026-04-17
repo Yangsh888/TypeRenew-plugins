@@ -255,11 +255,6 @@ class Push
             'key' => (string) $settings['indexNowKey'],
             'urlList' => $urls,
         ];
-        $keyRelativePath = Settings::keyRelativePath($settings);
-        $keyLocation = $keyRelativePath === '' ? '' : Settings::rootUrl($keyRelativePath);
-        if ($keyLocation !== '' && $keyRelativePath !== ((string) $settings['indexNowKey'] . '.txt')) {
-            $payload['keyLocation'] = $keyLocation;
-        }
 
         $response = self::request(
             'https://www.bing.com/indexnow',
