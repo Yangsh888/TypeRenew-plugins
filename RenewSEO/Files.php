@@ -5,6 +5,9 @@ namespace TypechoPlugin\RenewSEO;
 
 use Typecho\Db;
 use Typecho\Router;
+use Widget\Contents\From as ContentWidget;
+use Widget\Contents\Page\Rows as PageRows;
+use Widget\Metas\Category\Related as CategoryRelated;
 
 if (!defined('__TYPECHO_ROOT_DIR__')) {
     exit;
@@ -463,9 +466,25 @@ class Files
 
     private static function contentUrl(array $row): string
     {
+        $cid = (int) ($row['cid'] ?? 0);
+        if ($cid <= 0) {
+            return '';
+        }
+
+        try {
+            $widget = ContentWidget::allocWithAlias('renewseo-sitemap-' . $cid, ['cid' => $cid]);
+            if ($widget->have()) {
+                return (string) $widget->permalink;
+            }
+        } catch (\Throwable $e) {
+            Log::write('file', 'contentUrl', 'notice', (string) $cid, $e->getMessage());
+        }
+
         $params = [
             'cid' => $row['cid'] ?? 0,
             'slug' => $row['slug'] ?? '',
+            'category' => self::contentCategorySlug($cid),
+            'directory' => self::contentDirectory((string) ($row['type'] ?? 'post'), $cid),
             'year' => date('Y', (int) ($row['created'] ?? time())),
             'month' => date('m', (int) ($row['created'] ?? time())),
             'day' => date('d', (int) ($row['created'] ?? time())),
@@ -473,6 +492,39 @@ class Files
 
         $url = Router::url((string) ($row['type'] ?? 'post'), $params, (string) Settings::options()->index);
         return $url === '#' ? '' : $url;
+    }
+
+    private static function contentCategorySlug(int $cid): string
+    {
+        try {
+            $categories = CategoryRelated::allocWithAlias('renewseo-sitemap-category-' . $cid, ['cid' => $cid]);
+            if ($categories->have()) {
+                return (string) ($categories->slug ?? 'uncategorized');
+            }
+        } catch (\Throwable $e) {
+            Log::write('file', 'contentCategorySlug', 'notice', (string) $cid, $e->getMessage());
+        }
+
+        return 'uncategorized';
+    }
+
+    private static function contentDirectory(string $type, int $cid): string
+    {
+        if ($type !== 'page') {
+            return '';
+        }
+
+        try {
+            $pages = PageRows::allocWithAlias('renewseo-sitemap-page-' . $cid, ['current' => $cid]);
+            $parts = $pages->getAllParentsSlug($cid);
+            if ($parts !== []) {
+                return implode('/', array_map('urlencode', $parts));
+            }
+        } catch (\Throwable $e) {
+            Log::write('file', 'contentDirectory', 'notice', (string) $cid, $e->getMessage());
+        }
+
+        return '';
     }
 
     private static function buildUrlset(array $items): string
