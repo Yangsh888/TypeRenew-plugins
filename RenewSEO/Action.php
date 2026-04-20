@@ -64,8 +64,22 @@ class Action extends \Typecho\Widget
         }
 
         $task = is_array($data['task'] ?? null) ? $data['task'] : [];
-        $result = Push::process($task);
-        $this->response->throwJson(['ok' => true, 'result' => $result]);
+        $this->response->setStatus(202);
+        $this->response->throwFinish();
+
+        if (function_exists('ignore_user_abort')) {
+            ignore_user_abort(true);
+        }
+
+        if (function_exists('set_time_limit')) {
+            set_time_limit(30);
+        }
+
+        try {
+            Push::process($task);
+        } catch (\Throwable $e) {
+            Log::write('push', 'async', 'error', '', $e->getMessage());
+        }
     }
 
     private function save(): void

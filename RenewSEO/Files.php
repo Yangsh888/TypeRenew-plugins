@@ -69,6 +69,7 @@ class Files
             }
 
             Settings::cache()->set('renewseo:last_sync', time(), 86400);
+            self::clearPendingSync();
             if ($writeInfoLog) {
                 Log::write('file', 'sync', 'info', $reason, 'SEO 文件已同步', $result);
             }
@@ -98,7 +99,11 @@ class Files
                 return;
             }
 
-            if (self::hasExpectedFiles($settings)) {
+            if (self::hasExpectedFiles($settings) && !self::hasPendingSync()) {
+                return;
+            }
+
+            if (self::hasPendingSync() && !self::shouldSyncNow($settings)) {
                 return;
             }
 
@@ -126,6 +131,19 @@ class Files
         $hit = false;
         $last = (int) $cache->get('renewseo:last_sync', $hit);
         return !$hit || (time() - $last) >= $debounce;
+    }
+
+    public static function markPendingSync(string $reason = 'content'): void
+    {
+        $cache = Settings::cache();
+        if (!$cache->enabled()) {
+            return;
+        }
+
+        $cache->set('renewseo:pending_sync', [
+            'reason' => $reason,
+            'time' => time(),
+        ], 86400);
     }
 
     public static function buildRobots(array $settings): string
@@ -309,94 +327,68 @@ class Files
 
     private static function buildSitemap(array $settings): void
     {
-        $items = self::collectUrls($settings);
         $split = max(100, min(50000, (int) ($settings['sitemapSplit'] ?? 1000)));
-        $chunks = array_chunk(array_values($items), $split);
         self::removeChunkFiles();
+        $txtEnabled = ($settings['sitemapTxt'] ?? '1') === '1';
+        $txtTemp = null;
 
-        if (count($chunks) <= 1) {
-            self::writeRelativeFile('sitemap.xml', self::buildUrlset($chunks[0] ?? []));
-        } else {
-            $index = [];
-            foreach ($chunks as $offset => $chunk) {
-                $name = 'sitemap-' . ($offset + 1) . '.xml';
-                self::writeRelativeFile($name, self::buildUrlset($chunk));
-                $index[] = [
-                    'loc' => Settings::rootUrl($name),
-                    'lastmod' => date('c'),
-                ];
+        try {
+            if ($txtEnabled) {
+                $txtTemp = self::createTempFile(dirname(Settings::rootPath('sitemap.txt')));
             }
-            self::writeRelativeFile('sitemap.xml', self::buildIndex($index));
-        }
 
-        if (($settings['sitemapTxt'] ?? '1') === '1') {
-            $lines = array_map(static fn(array $item): string => (string) $item['loc'], array_values($items));
-            self::writeRelativeFile('sitemap.txt', implode("\n", $lines) . "\n");
-        } else {
-            self::deleteRelative('sitemap.txt');
+            $state = [
+                'split' => $split,
+                'generatedAt' => date('c'),
+                'seen' => [],
+                'buffer' => [],
+                'chunkCount' => 0,
+                'index' => [],
+                'multi' => false,
+                'txtEnabled' => $txtEnabled,
+                'txtTemp' => $txtTemp,
+                'txtBuffer' => '',
+            ];
+
+            foreach (self::iterateSitemapItems($settings) as $item) {
+                self::appendSitemapItem($state, $item);
+            }
+
+            self::finalizeSitemap($state);
+        } finally {
+            if ($txtTemp !== null && is_file($txtTemp)) {
+                @unlink($txtTemp);
+            }
         }
     }
 
-    private static function collectUrls(array $settings): array
+    private static function iterateSitemapItems(array $settings): \Generator
     {
-        $items = [];
         $now = time();
 
-        self::add($items, [
+        yield [
             'loc' => Settings::siteUrl(),
             'lastmod' => date('c', $now),
             'priority' => (string) ($settings['sitemapPriorityHome'] ?? '1.0'),
             'changefreq' => (string) ($settings['sitemapFreqHome'] ?? 'daily'),
-        ]);
+        ];
 
         $archiveUrl = Router::url('archive', null, (string) Settings::options()->index);
         if ($archiveUrl !== '#' && rtrim($archiveUrl, '/') !== rtrim(Settings::siteUrl(), '/')) {
-            self::add($items, [
+            yield [
                 'loc' => $archiveUrl,
                 'lastmod' => date('c', $now),
                 'priority' => (string) ($settings['sitemapPriorityHome'] ?? '1.0'),
                 'changefreq' => (string) ($settings['sitemapFreqHome'] ?? 'daily'),
-            ]);
+            ];
         }
 
         $db = Db::get();
-        $contents = $db->fetchAll(
-            $db->select('cid', 'slug', 'type', 'created', 'modified', 'text')
-                ->from('table.contents')
-                ->where('status = ? AND type IN (?, ?)', 'publish', 'post', 'page')
-                ->order('modified', Db::SORT_DESC)
-        );
-
-        $contentIds = array_values(array_filter(array_map(
-            static fn(array $row): int => (int) ($row['cid'] ?? 0),
-            $contents
-        )));
-        $contentFields = self::contentFields($contentIds);
-
-        foreach ($contents as $row) {
-            $url = self::contentUrl($row);
-            if ($url === '') {
-                continue;
+        foreach (self::iteratePublishedContents($settings) as [$row, $fields, $routeContext]) {
+            $item = self::buildContentSitemapItem($row, $fields, $routeContext, $settings, $now);
+            if ($item !== null) {
+                yield $item;
             }
-            $isPage = (string) $row['type'] === 'page';
-            if (!$isPage && ($settings['sitemapPost'] ?? '1') !== '1') {
-                continue;
-            }
-            if ($isPage && ($settings['sitemapPage'] ?? '1') !== '1') {
-                continue;
-            }
-            $cid = (int) ($row['cid'] ?? 0);
-            $fields = $contentFields[$cid] ?? [];
-            $image = ($settings['sitemapImage'] ?? '1') === '1'
-                ? Meta::sitemapImage($row, $fields, $settings)
-                : '';
-            self::add($items, [
-                'loc' => $url,
-                'lastmod' => date('c', max((int) ($row['modified'] ?? 0), (int) ($row['created'] ?? 0), $now)),
-                'priority' => (string) ($isPage ? ($settings['sitemapPriorityPage'] ?? '0.7') : ($settings['sitemapPriorityPost'] ?? '0.8')),
-                'changefreq' => (string) ($isPage ? ($settings['sitemapFreqPage'] ?? 'monthly') : ($settings['sitemapFreqPost'] ?? 'weekly')),
-                'image' => $image,
-            ]);
         }
 
         if (($settings['sitemapCategory'] ?? '1') === '1') {
@@ -408,12 +400,12 @@ class Files
             foreach ($rows as $row) {
                 $url = Router::url('category', ['slug' => $row['slug']], (string) Settings::options()->index);
                 if ($url !== '#') {
-                    self::add($items, [
+                    yield [
                         'loc' => $url,
                         'lastmod' => date('c', $now),
                         'priority' => (string) ($settings['sitemapPriorityCategory'] ?? '0.6'),
                         'changefreq' => (string) ($settings['sitemapFreqTaxonomy'] ?? 'daily'),
-                    ]);
+                    ];
                 }
             }
         }
@@ -427,12 +419,12 @@ class Files
             foreach ($rows as $row) {
                 $url = Router::url('tag', ['slug' => $row['slug']], (string) Settings::options()->index);
                 if ($url !== '#') {
-                    self::add($items, [
+                    yield [
                         'loc' => $url,
                         'lastmod' => date('c', $now),
                         'priority' => (string) ($settings['sitemapPriorityTag'] ?? '0.5'),
                         'changefreq' => (string) ($settings['sitemapFreqTaxonomy'] ?? 'daily'),
-                    ]);
+                    ];
                 }
             }
         }
@@ -451,17 +443,15 @@ class Files
                 }
                 $url = Router::url('author', ['uid' => $uid], (string) Settings::options()->index);
                 if ($url !== '#') {
-                    self::add($items, [
+                    yield [
                         'loc' => $url,
                         'lastmod' => date('c', $now),
                         'priority' => (string) ($settings['sitemapPriorityAuthor'] ?? '0.4'),
                         'changefreq' => (string) ($settings['sitemapFreqTaxonomy'] ?? 'daily'),
-                    ]);
+                    ];
                 }
             }
         }
-
-        return $items;
     }
 
     private static function contentUrl(array $row): string
@@ -584,18 +574,378 @@ class Files
         return $urls;
     }
 
-    private static function add(array &$items, array $item): void
-    {
-        $loc = trim((string) ($item['loc'] ?? ''));
-        if ($loc === '') {
-            return;
-        }
-        $items[$loc] = $item;
-    }
-
     private static function xml(string $value): string
     {
         return htmlspecialchars($value, ENT_QUOTES | ENT_XML1, 'UTF-8');
+    }
+
+    private static function iteratePublishedContents(array $settings, int $pageSize = 200): \Generator
+    {
+        $db = Db::get();
+        $withImageData = ($settings['sitemapImage'] ?? '1') === '1';
+        $page = 1;
+        $context = [
+            'categoryOrder' => self::categoryOrderIndex(),
+            'pageNodes' => [],
+            'pageDirectories' => [],
+        ];
+
+        do {
+            $select = $withImageData
+                ? $db->select('cid', 'slug', 'type', 'created', 'modified', 'text')
+                : $db->select('cid', 'slug', 'type', 'created', 'modified');
+            $rows = $db->fetchAll(
+                $select
+                    ->from('table.contents')
+                    ->where('status = ? AND type IN (?, ?)', 'publish', 'post', 'page')
+                    ->order('modified', Db::SORT_DESC)
+                    ->page($page, $pageSize)
+            );
+
+            if (empty($rows)) {
+                break;
+            }
+
+            $fieldsByCid = $withImageData
+                ? self::contentFields(array_values(array_filter(array_map(
+                    static fn(array $row): int => (int) ($row['cid'] ?? 0),
+                    $rows
+                ))))
+                : [];
+            $routeContext = self::buildBatchRouteContext($rows, $context);
+
+            foreach ($rows as $row) {
+                $cid = (int) ($row['cid'] ?? 0);
+                yield [$row, $fieldsByCid[$cid] ?? [], $routeContext[$cid] ?? []];
+            }
+
+            $page++;
+        } while (count($rows) === $pageSize);
+    }
+
+    private static function buildContentSitemapItem(array $row, array $fields, array $routeContext, array $settings, int $now): ?array
+    {
+        $url = self::contentUrlFromRouteContext($row, $routeContext);
+        if ($url === '') {
+            $url = self::contentUrl($row);
+        }
+        if ($url === '') {
+            return null;
+        }
+
+        $isPage = (string) $row['type'] === 'page';
+        if (!$isPage && ($settings['sitemapPost'] ?? '1') !== '1') {
+            return null;
+        }
+        if ($isPage && ($settings['sitemapPage'] ?? '1') !== '1') {
+            return null;
+        }
+
+        $lastmod = max((int) ($row['modified'] ?? 0), (int) ($row['created'] ?? 0));
+        if ($lastmod <= 0) {
+            $lastmod = $now;
+        }
+
+        return [
+            'loc' => $url,
+            'lastmod' => date('c', $lastmod),
+            'priority' => (string) ($isPage ? ($settings['sitemapPriorityPage'] ?? '0.7') : ($settings['sitemapPriorityPost'] ?? '0.8')),
+            'changefreq' => (string) ($isPage ? ($settings['sitemapFreqPage'] ?? 'monthly') : ($settings['sitemapFreqPost'] ?? 'weekly')),
+            'image' => ($settings['sitemapImage'] ?? '1') === '1'
+                ? Meta::sitemapImage($row, $fields, $settings)
+                : '',
+        ];
+    }
+
+    private static function buildBatchRouteContext(array $rows, array &$context): array
+    {
+        $cids = [];
+        $pageIds = [];
+        foreach ($rows as $row) {
+            $cid = (int) ($row['cid'] ?? 0);
+            if ($cid <= 0) {
+                continue;
+            }
+            $cids[] = $cid;
+            if ((string) ($row['type'] ?? '') === 'page') {
+                $pageIds[] = $cid;
+            }
+        }
+
+        $result = [];
+        $categoryByCid = self::batchCategorySlugs($cids, $context['categoryOrder']);
+        self::warmPageNodes($pageIds, $context);
+
+        foreach ($cids as $cid) {
+            $result[$cid] = [
+                'category' => $categoryByCid[$cid] ?? 'uncategorized',
+                'directory' => self::pageDirectoryFor($cid, $context),
+            ];
+        }
+
+        return $result;
+    }
+
+    private static function contentUrlFromRouteContext(array $row, array $routeContext): string
+    {
+        $cid = (int) ($row['cid'] ?? 0);
+        if ($cid <= 0) {
+            return '';
+        }
+
+        $created = (int) ($row['created'] ?? time());
+        $params = [
+            'cid' => $cid,
+            'slug' => $row['slug'] ?? '',
+            'category' => (string) ($routeContext['category'] ?? 'uncategorized'),
+            'directory' => (string) ($routeContext['directory'] ?? ''),
+            'year' => date('Y', $created),
+            'month' => date('m', $created),
+            'day' => date('d', $created),
+        ];
+
+        $url = Router::url((string) ($row['type'] ?? 'post'), $params, (string) Settings::options()->index);
+        return $url === '#' ? '' : $url;
+    }
+
+    private static function categoryOrderIndex(): array
+    {
+        $rows = Db::get()->fetchAll(
+            Db::get()->select('mid', 'slug', 'order', 'parent')
+                ->from('table.metas')
+                ->where('type = ?', 'category')
+        );
+
+        if (empty($rows)) {
+            return [];
+        }
+
+        usort($rows, static function (array $a, array $b): int {
+            return ((int) ($a['order'] ?? 0)) <=> ((int) ($b['order'] ?? 0));
+        });
+
+        $map = [];
+        $children = [];
+        $top = [];
+        foreach ($rows as $row) {
+            $mid = (int) ($row['mid'] ?? 0);
+            if ($mid <= 0) {
+                continue;
+            }
+            $map[$mid] = $row;
+        }
+
+        foreach ($map as $mid => $row) {
+            $parent = (int) ($row['parent'] ?? 0);
+            if ($parent > 0 && isset($map[$parent])) {
+                $children[$parent][] = $mid;
+            } else {
+                $top[] = $mid;
+            }
+        }
+
+        $order = [];
+        $index = 0;
+        $walk = static function (array $ids) use (&$walk, &$children, &$order, &$index): void {
+            foreach ($ids as $id) {
+                $order[$id] = $index++;
+                if (!empty($children[$id])) {
+                    $walk($children[$id]);
+                }
+            }
+        };
+        $walk($top);
+
+        return $order;
+    }
+
+    private static function batchCategorySlugs(array $cids, array $categoryOrder): array
+    {
+        if (empty($cids)) {
+            return [];
+        }
+
+        $rows = Db::get()->fetchAll(
+            Db::get()->select('table.relationships.cid', 'table.metas.mid', 'table.metas.slug')
+                ->from('table.relationships')
+                ->join('table.metas', 'table.relationships.mid = table.metas.mid')
+                ->where('table.relationships.cid IN ?', $cids)
+                ->where('table.metas.type = ?', 'category')
+        );
+
+        $grouped = [];
+        foreach ($rows as $row) {
+            $cid = (int) ($row['cid'] ?? 0);
+            $mid = (int) ($row['mid'] ?? 0);
+            if ($cid <= 0 || $mid <= 0) {
+                continue;
+            }
+            $grouped[$cid][] = [
+                'mid' => $mid,
+                'slug' => (string) ($row['slug'] ?? ''),
+            ];
+        }
+
+        $result = [];
+        foreach ($grouped as $cid => $items) {
+            usort($items, static function (array $a, array $b) use ($categoryOrder): int {
+                $orderA = $categoryOrder[$a['mid']] ?? PHP_INT_MAX;
+                $orderB = $categoryOrder[$b['mid']] ?? PHP_INT_MAX;
+                if ($orderA === $orderB) {
+                    return $a['mid'] <=> $b['mid'];
+                }
+                return $orderA <=> $orderB;
+            });
+            $result[$cid] = (string) ($items[0]['slug'] ?? 'uncategorized');
+        }
+
+        return $result;
+    }
+
+    private static function warmPageNodes(array $pageIds, array &$context): void
+    {
+        $pending = [];
+        foreach ($pageIds as $cid) {
+            $cid = (int) $cid;
+            if ($cid > 0 && !isset($context['pageNodes'][$cid])) {
+                $pending[$cid] = $cid;
+            }
+        }
+
+        while (!empty($pending)) {
+            $rows = Db::get()->fetchAll(
+                Db::get()->select('cid', 'slug', 'parent')
+                    ->from('table.contents')
+                    ->where('type = ? AND status = ?', 'page', 'publish')
+                    ->where('cid IN ?', array_values($pending))
+            );
+
+            $pending = [];
+            foreach ($rows as $row) {
+                $cid = (int) ($row['cid'] ?? 0);
+                if ($cid <= 0) {
+                    continue;
+                }
+
+                $context['pageNodes'][$cid] = [
+                    'slug' => (string) ($row['slug'] ?? ''),
+                    'parent' => (int) ($row['parent'] ?? 0),
+                ];
+
+                $parent = (int) ($row['parent'] ?? 0);
+                if ($parent > 0 && !isset($context['pageNodes'][$parent])) {
+                    $pending[$parent] = $parent;
+                }
+            }
+        }
+    }
+
+    private static function pageDirectoryFor(int $cid, array &$context): string
+    {
+        if ($cid <= 0) {
+            return '';
+        }
+
+        if (isset($context['pageDirectories'][$cid])) {
+            return (string) $context['pageDirectories'][$cid];
+        }
+
+        if (!isset($context['pageNodes'][$cid])) {
+            $context['pageDirectories'][$cid] = '';
+            return '';
+        }
+
+        $parts = [];
+        $seen = [];
+        $parent = (int) ($context['pageNodes'][$cid]['parent'] ?? 0);
+        while ($parent > 0 && isset($context['pageNodes'][$parent]) && !isset($seen[$parent])) {
+            $seen[$parent] = true;
+            $slug = trim((string) ($context['pageNodes'][$parent]['slug'] ?? ''));
+            if ($slug !== '') {
+                $parts[] = urlencode($slug);
+            }
+            $parent = (int) ($context['pageNodes'][$parent]['parent'] ?? 0);
+        }
+
+        $context['pageDirectories'][$cid] = implode('/', array_reverse($parts));
+        return (string) $context['pageDirectories'][$cid];
+    }
+
+    private static function appendSitemapItem(array &$state, array $item): void
+    {
+        $loc = trim((string) ($item['loc'] ?? ''));
+        if ($loc === '' || isset($state['seen'][$loc])) {
+            return;
+        }
+
+        $state['seen'][$loc] = true;
+        $state['buffer'][] = $item;
+
+        if ($state['txtEnabled']) {
+            $state['txtBuffer'] .= $loc . "\n";
+            if (strlen($state['txtBuffer']) >= 8192) {
+                self::flushSitemapTxtBuffer($state);
+            }
+        }
+
+        if (!$state['multi'] && count($state['buffer']) > $state['split']) {
+            $state['multi'] = true;
+            self::writeSitemapChunk($state, array_splice($state['buffer'], 0, $state['split']));
+        }
+
+        if ($state['multi'] && count($state['buffer']) >= $state['split']) {
+            self::writeSitemapChunk($state, array_splice($state['buffer'], 0, $state['split']));
+        }
+    }
+
+    private static function finalizeSitemap(array &$state): void
+    {
+        if ($state['multi']) {
+            if (!empty($state['buffer'])) {
+                self::writeSitemapChunk($state, $state['buffer']);
+                $state['buffer'] = [];
+            }
+            self::writeRelativeFile('sitemap.xml', self::buildIndex($state['index']));
+        } else {
+            self::writeRelativeFile('sitemap.xml', self::buildUrlset($state['buffer']));
+            $state['buffer'] = [];
+        }
+
+        if ($state['txtEnabled']) {
+            self::flushSitemapTxtBuffer($state);
+            self::moveTempFileToRelative((string) $state['txtTemp'], 'sitemap.txt');
+            $state['txtTemp'] = null;
+        } else {
+            self::deleteRelative('sitemap.txt');
+        }
+    }
+
+    private static function writeSitemapChunk(array &$state, array $items): void
+    {
+        if (empty($items)) {
+            return;
+        }
+
+        $state['chunkCount']++;
+        $name = 'sitemap-' . $state['chunkCount'] . '.xml';
+        self::writeRelativeFile($name, self::buildUrlset($items));
+        $state['index'][] = [
+            'loc' => Settings::rootUrl($name),
+            'lastmod' => (string) $state['generatedAt'],
+        ];
+    }
+
+    private static function flushSitemapTxtBuffer(array &$state): void
+    {
+        if (!$state['txtEnabled'] || $state['txtBuffer'] === '') {
+            return;
+        }
+
+        if (@file_put_contents((string) $state['txtTemp'], $state['txtBuffer'], FILE_APPEND) === false) {
+            throw new \RuntimeException('unable to write sitemap txt temp file');
+        }
+
+        $state['txtBuffer'] = '';
     }
 
     private static function contentFields(array $cids): array
@@ -659,6 +1009,26 @@ class Files
         }
     }
 
+    private static function hasPendingSync(): bool
+    {
+        $cache = Settings::cache();
+        if (!$cache->enabled()) {
+            return false;
+        }
+
+        $hit = false;
+        $cache->get('renewseo:pending_sync', $hit);
+        return $hit;
+    }
+
+    private static function clearPendingSync(): void
+    {
+        $cache = Settings::cache();
+        if ($cache->enabled()) {
+            $cache->delete('renewseo:pending_sync');
+        }
+    }
+
     private static function writeRelativeFile(string $relative, string $content): void
     {
         $relative = str_replace('\\', '/', ltrim($relative, '/'));
@@ -672,16 +1042,36 @@ class Files
             throw new \RuntimeException('unable to create directory: ' . $dir);
         }
 
+        $temp = self::createTempFile($dir);
+        if (@file_put_contents($temp, $content) === false) {
+            throw new \RuntimeException('unable to write temp file');
+        }
+
+        self::moveTempFileToPath($temp, $path, $relative);
+    }
+
+    private static function createTempFile(string $dir): string
+    {
         $temp = tempnam($dir, 'rseo_');
         if ($temp === false) {
             throw new \RuntimeException('unable to create temp file');
         }
 
-        if (@file_put_contents($temp, $content) === false) {
-            @unlink($temp);
-            throw new \RuntimeException('unable to write temp file');
+        return $temp;
+    }
+
+    private static function moveTempFileToRelative(string $temp, string $relative): void
+    {
+        $relative = str_replace('\\', '/', ltrim($relative, '/'));
+        if ($relative === '' || strpos($relative, '..') !== false) {
+            throw new \RuntimeException('invalid relative path');
         }
 
+        self::moveTempFileToPath($temp, Settings::rootPath($relative), $relative);
+    }
+
+    private static function moveTempFileToPath(string $temp, string $path, string $relative): void
+    {
         if (is_file($path) && !@unlink($path)) {
             @unlink($temp);
             throw new \RuntimeException('unable to replace file: ' . $relative);

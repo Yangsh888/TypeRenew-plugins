@@ -6,26 +6,25 @@ if (!defined('__TYPECHO_ROOT_DIR__')) {
 $user->pass('administrator');
 $settings = RenewGo_Plugin::getSettings();
 $db = \Typecho\Db::get();
-$prefix = $db->getPrefix();
 $limit = (int) ($settings['panelSize'] ?? 40);
 $limit = max(10, min(200, $limit));
 $logs = [];
 $summary = (object) ['total' => 0, 'jump_success' => 0, 'jump_block' => 0];
 
 try {
-    $summaryTotal = $db->fetchObject($db->select(['COUNT(*)' => 'num'])->from($prefix . 'renew_go_logs'));
+    $summaryTotal = $db->fetchObject($db->select(['COUNT(*)' => 'num'])->from('table.renew_go_logs'));
     $summarySuccess = $db->fetchObject($db->select(['COUNT(*)' => 'num'])
-        ->from($prefix . 'renew_go_logs')
+        ->from('table.renew_go_logs')
         ->where('action = ? AND result = ?', 'jump', 'success'));
     $summaryBlock = $db->fetchObject($db->select(['COUNT(*)' => 'num'])
-        ->from($prefix . 'renew_go_logs')
+        ->from('table.renew_go_logs')
         ->where('result = ?', 'rate-limit'));
     $summary = (object) [
         'total' => (int) ($summaryTotal->num ?? 0),
         'jump_success' => (int) ($summarySuccess->num ?? 0),
         'jump_block' => (int) ($summaryBlock->num ?? 0)
     ];
-    $logs = $db->fetchAll($db->select()->from($prefix . 'renew_go_logs')
+    $logs = $db->fetchAll($db->select()->from('table.renew_go_logs')
         ->order('id', \Typecho\Db::SORT_DESC)->limit($limit));
 } catch (Throwable $e) {
     $logs = [];

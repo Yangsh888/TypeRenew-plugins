@@ -310,69 +310,29 @@ class RenewGo_Plugin implements PluginInterface
         }
 
         $db = Db::get();
-        $prefix = $db->getPrefix();
-
         $lockAcquired = false;
         if ($cache->enabled()) {
             $lockAcquired = $cache->tryLock($lockKey, 5);
         }
 
-        if (!$lockAcquired) {
-            usleep(100000);
-            for ($i = 0; $i < 10; $i++) {
-                $row = $db->fetchRow(
-                    $db->select('value')->from($prefix . 'options')
-                        ->where('name = ?', 'plugin:RenewGo')
-                        ->limit(1)
-                );
-                if ($row) {
-                    $config = self::decodeOptionValue((string) ($row['value'] ?? ''));
-                    if (is_array($config) && !empty($config['signSecret'])) {
-                        return (string) $config['signSecret'];
-                    }
-                }
-                usleep(50000);
+        if (!$lockAcquired && $cache->enabled()) {
+            $value = null;
+            if ($cache->waitFor($cacheKey, $value, 5, 50000) && is_string($value) && $value !== '') {
+                return $value;
             }
         }
 
         try {
-            $newSecret = bin2hex(random_bytes(32));
-
-            $existing = $db->fetchRow(
-                $db->select('value')->from($prefix . 'options')
-                    ->where('name = ?', 'plugin:RenewGo')
-                    ->limit(1)
-            );
-
-            if ($existing) {
-                $config = self::decodeOptionValue((string) ($existing['value'] ?? ''));
-                if (is_array($config) && !empty($config['signSecret'])) {
-                    $finalSecret = (string) $config['signSecret'];
-                    if ($cache->enabled()) {
-                        $cache->set($cacheKey, $finalSecret, 3600);
-                    }
-                    return $finalSecret;
+            $current = self::readSigningSecret($db);
+            if ($current !== '') {
+                if ($cache->enabled()) {
+                    $cache->set($cacheKey, $current, 3600);
                 }
-
-                $config = is_array($config) ? $config : [];
-                $config['signSecret'] = $newSecret;
-                $db->query(
-                    $db->update($prefix . 'options')
-                        ->rows(['value' => self::encodeOptionValue($config)])
-                        ->where('name = ?', 'plugin:RenewGo')
-                );
-            } else {
-                $config = ['signSecret' => $newSecret];
-                $db->query(
-                    $db->insert($prefix . 'options')
-                        ->rows([
-                            'name' => 'plugin:RenewGo',
-                            'user' => 0,
-                            'value' => self::encodeOptionValue($config)
-                        ])
-                );
+                return $current;
             }
 
+            $newSecret = bin2hex(random_bytes(32));
+            self::writeSigningSecret($db, $newSecret);
             if ($cache->enabled()) {
                 $cache->set($cacheKey, $newSecret, 3600);
             }
@@ -383,6 +343,52 @@ class RenewGo_Plugin implements PluginInterface
                 $cache->unlock($lockKey);
             }
         }
+    }
+
+    private static function readSigningSecret(Db $db): string
+    {
+        $row = $db->fetchRow(
+            $db->select('value')->from('table.options')
+                ->where('name = ?', 'plugin:RenewGo')
+                ->limit(1)
+        );
+
+        if (!$row) {
+            return '';
+        }
+
+        $config = self::decodeOptionValue((string) ($row['value'] ?? ''));
+        return is_array($config) && !empty($config['signSecret']) ? (string) $config['signSecret'] : '';
+    }
+
+    private static function writeSigningSecret(Db $db, string $secret): void
+    {
+        $row = $db->fetchRow(
+            $db->select('value')->from('table.options')
+                ->where('name = ?', 'plugin:RenewGo')
+                ->limit(1)
+        );
+
+        if ($row) {
+            $config = self::decodeOptionValue((string) ($row['value'] ?? ''));
+            $config = is_array($config) ? $config : [];
+            $config['signSecret'] = $secret;
+            $db->query(
+                $db->update('table.options')
+                    ->rows(['value' => self::encodeOptionValue($config)])
+                    ->where('name = ?', 'plugin:RenewGo')
+            );
+            return;
+        }
+
+        $db->query(
+            $db->insert('table.options')
+                ->rows([
+                    'name' => 'plugin:RenewGo',
+                    'user' => 0,
+                    'value' => self::encodeOptionValue(['signSecret' => $secret])
+                ])
+        );
     }
 
     public static function verifySign(string $encoded, int $time, string $sign): bool
@@ -627,7 +633,7 @@ class RenewGo_Plugin implements PluginInterface
             return true;
         }
         foreach ($rules['wildHost'] as $suffix) {
-            if ($suffix !== '' && (str_ends_with('.' . $host, '.' . $suffix) || $host === $suffix)) {
+            if ($suffix !== '' && $host !== $suffix && str_ends_with($host, '.' . $suffix)) {
                 return true;
             }
         }
@@ -729,10 +735,9 @@ class RenewGo_Plugin implements PluginInterface
 
         try {
             $db = Db::get();
-            $prefix = $db->getPrefix();
             $since = time() - 3600;
             $row = $db->fetchObject($db->select(['COUNT(*)' => 'num'])
-                ->from($prefix . 'renew_go_logs')
+                ->from('table.renew_go_logs')
                 ->where('ip = ? AND action IN (?, ?) AND created_at > ?', $ip, 'jump', 'go', $since));
             $count = (int) ($row->num ?? 0);
             if ($count >= $limit) {
@@ -767,8 +772,7 @@ class RenewGo_Plugin implements PluginInterface
 
         try {
             $db = Db::get();
-            $prefix = $db->getPrefix();
-            $db->query($db->insert($prefix . 'renew_go_logs')->rows([
+            $db->query($db->insert('table.renew_go_logs')->rows([
                 'ip' => $ip,
                 'action' => substr($action, 0, 24),
                 'result' => substr($result, 0, 16),
@@ -784,8 +788,7 @@ class RenewGo_Plugin implements PluginInterface
     public static function purgeLogs(): int
     {
         $db = Db::get();
-        $prefix = $db->getPrefix();
-        return $db->query($db->delete($prefix . 'renew_go_logs'));
+        return $db->query($db->delete('table.renew_go_logs'));
     }
 
     public static function cleanupLogs(int $keepDays = 30): int
@@ -793,9 +796,8 @@ class RenewGo_Plugin implements PluginInterface
         $keepDays = max(1, min(365, $keepDays));
         $before = time() - ($keepDays * 86400);
         $db = Db::get();
-        $prefix = $db->getPrefix();
         try {
-            return (int) $db->query($db->delete($prefix . 'renew_go_logs')->where('created_at < ?', $before));
+            return (int) $db->query($db->delete('table.renew_go_logs')->where('created_at < ?', $before));
         } catch (Throwable $e) {
             return 0;
         }

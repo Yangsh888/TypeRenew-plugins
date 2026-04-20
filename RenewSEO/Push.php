@@ -36,6 +36,9 @@ class Push
         }
         self::$queue['rebuild'] = self::$queue['rebuild'] || $rebuild;
         self::$queue['reasons'][$reason] = true;
+        if (!$rebuild) {
+            Files::markPendingSync($reason);
+        }
 
         if (self::$registered) {
             return;
@@ -65,8 +68,9 @@ class Push
                 if (!$client) {
                     throw new \RuntimeException('http client unavailable');
                 }
-                $client->setTimeout((int) ($settings['pushTimeout'] ?? 10));
+                $client->setTimeout(3);
                 $client->setMethod('POST');
+                $client->setOption(CURLOPT_CONNECTTIMEOUT, 1);
                 $client->setHeader('Content-Type', 'application/json; charset=utf-8');
                 $client->setJson($payload);
                 $client->send(Settings::actionUrl('async'));

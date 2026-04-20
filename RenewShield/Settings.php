@@ -542,7 +542,27 @@ class Settings
 
     private static function html(string $value, int $max): string
     {
-        return Text::cut(trim((string) $value), $max);
+        $value = trim((string) $value);
+        if ($value === '') {
+            return '';
+        }
+
+        $value = preg_replace(
+            [
+                '#<script\b[^>]*>.*?</script>#is',
+                '#<iframe\b[^>]*>.*?</iframe>#is',
+                '/\s+on[a-z0-9_-]+\s*=\s*(".*?"|\'.*?\'|[^\s>]+)/iu',
+                '/javascript\s*:/iu',
+            ],
+            ['', '', '', ''],
+            $value
+        );
+
+        if (!is_string($value)) {
+            return '';
+        }
+
+        return Text::cut($value, $max);
     }
 
     private static function urlOrRelative(string $value, int $max): string

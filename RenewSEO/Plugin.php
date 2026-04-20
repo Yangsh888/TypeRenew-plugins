@@ -136,7 +136,7 @@ class Plugin implements PluginInterface
             $deleted[] = $item;
         }
 
-        Push::schedule($urls, $deleted, true, 'mark:' . $status);
+        Push::schedule($urls, $deleted, Files::shouldSyncNow(Settings::load()), 'mark:' . $status);
     }
 
     public static function finishDelete(int $cid, $_editor): void
@@ -148,7 +148,32 @@ class Plugin implements PluginInterface
         }
 
         $item['deleted'] = true;
-        Push::schedule([], [$item], true, 'delete');
+        Push::schedule([], [$item], Files::shouldSyncNow(Settings::load()), 'delete');
+    }
+
+    public static function finishMetaChange(...$_args): void
+    {
+        self::scheduleRebuild('meta');
+    }
+
+    public static function finishGeneralUpdate(array $before, array $after, $_widget): void
+    {
+        foreach (['siteUrl', 'title', 'description', 'keywords'] as $key) {
+            if ((string) ($before[$key] ?? '') !== (string) ($after[$key] ?? '')) {
+                self::scheduleRebuild('general');
+                return;
+            }
+        }
+    }
+
+    public static function finishPermalinkUpdate(array $before, array $after, $_widget): void
+    {
+        foreach (['routingTable', 'rewrite'] as $key) {
+            if ((string) ($before[$key] ?? '') !== (string) ($after[$key] ?? '')) {
+                self::scheduleRebuild('permalink');
+                return;
+            }
+        }
     }
 
     private static function afterPublish($editor): void
@@ -174,6 +199,11 @@ class Plugin implements PluginInterface
         }
 
         Push::schedule($urls, $deleted, Files::shouldSyncNow(Settings::load()), 'publish');
+    }
+
+    private static function scheduleRebuild(string $reason): void
+    {
+        Push::schedule([], [], Files::shouldSyncNow(Settings::load()), $reason);
     }
 
     private static function registerHooks(): void
@@ -208,5 +238,13 @@ class Plugin implements PluginInterface
             Hook::factory($editor)->finishDelete = [self::class, 'finishDelete'];
             Hook::factory($editor)->finishMark = [self::class, 'finishMark'];
         }
+
+        foreach (['finishInsert', 'finishUpdate', 'finishDelete', 'finishMerge', 'finishRefresh'] as $event) {
+            Hook::factory('Widget\\Metas\\Category\\Edit')->{$event} = [self::class, 'finishMetaChange'];
+            Hook::factory('Widget\\Metas\\Tag\\Edit')->{$event} = [self::class, 'finishMetaChange'];
+        }
+
+        Hook::factory('Widget\\Options\\General')->finishUpdate = [self::class, 'finishGeneralUpdate'];
+        Hook::factory('Widget\\Options\\Permalink')->finishUpdate = [self::class, 'finishPermalinkUpdate'];
     }
 }
