@@ -49,6 +49,10 @@ class RenewGo_Action extends Typecho_Widget
         if ($keepDays > 0) {
             $this->maybeCleanupLogs($keepDays);
         }
+        if ((string) ($settings['enabled'] ?? '1') !== '1') {
+            $this->failPage('go', 'disabled', '', _t('外链跳转功能已停用'), 403, true);
+            return;
+        }
         $encoded = trim((string) $this->request->get('target', ''));
         ['decoded' => $decoded, 'url' => $url] = $this->resolveTarget($encoded);
 
@@ -64,7 +68,8 @@ class RenewGo_Action extends Typecho_Widget
 
         if ($settings['mode'] === 'direct302') {
             $isWhitelisted = RenewGo_Plugin::isWhitelisted($url, $settings);
-            if ((string) ($settings['directWhitelistOnly'] ?? '1') === '1') {
+            $whitelistOnly = (string) ($settings['directWhitelistOnly'] ?? '1') === '1';
+            if ($whitelistOnly) {
                 $whitelist = trim((string) ($settings['whitelist'] ?? ''));
                 if ($whitelist === '') {
                     $this->failPage('go', 'no-whitelist', $url, _t('直跳模式未配置白名单，请联系管理员'), 200, true);
@@ -78,7 +83,7 @@ class RenewGo_Action extends Typecho_Widget
             if (!$this->enforceRateLimit($settings, 'go', $url)) {
                 return;
             }
-            if ($isWhitelisted) {
+            if (!$whitelistOnly || $isWhitelisted) {
                 RenewGo_Plugin::logEvent('go', 'redirect', $url, (string) $this->request->getReferer(), true);
                 $this->response->redirect($url);
                 return;
@@ -110,6 +115,16 @@ class RenewGo_Action extends Typecho_Widget
         $keepDays = (int) ($settings['logKeepDays'] ?? 0);
         if ($keepDays > 0) {
             $this->maybeCleanupLogs($keepDays);
+        }
+
+        if ((string) ($settings['enabled'] ?? '1') !== '1') {
+            $this->failPage('jump', 'disabled', '', _t('外链跳转功能已停用'), 403, true);
+            return;
+        }
+
+        if (($settings['mode'] ?? '') === 'off') {
+            $this->failPage('jump', 'disabled', '', _t('外链跳转功能已关闭'), 403, true);
+            return;
         }
 
         $encoded = trim((string) $this->request->get('target', ''));
@@ -275,11 +290,12 @@ class RenewGo_Action extends Typecho_Widget
 
     private function jsonError(string $message, int $status, string $code): void
     {
+        $this->response->setStatus($status);
         $this->response->throwJson([
             'success' => 0,
             'error' => $message,
             'code' => $code
-        ], $status);
+        ]);
     }
 
     private function jsonSuccess(array $data): void

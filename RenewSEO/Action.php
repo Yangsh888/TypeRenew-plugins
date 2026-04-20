@@ -84,6 +84,10 @@ class Action extends \Typecho\Widget
 
     private function save(): void
     {
+        if (!$this->request->isPost()) {
+            $this->notice('保存操作必须通过 POST 提交', 'error');
+        }
+
         $previous = Settings::loadFresh();
         $data = [];
         foreach (Settings::boolKeys() as $key) {
@@ -93,11 +97,6 @@ class Action extends \Typecho\Widget
         foreach (array_keys(Settings::defaults()) as $key) {
             if (array_key_exists($key, $_POST)) {
                 $data[$key] = $_POST[$key];
-                continue;
-            }
-
-            if (array_key_exists($key, $_GET)) {
-                $data[$key] = $_GET[$key];
             }
         }
 

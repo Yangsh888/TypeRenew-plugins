@@ -52,9 +52,13 @@ class Action extends \Typecho\Widget
 
     private function save(): void
     {
+        if (!$this->request->isPost()) {
+            $this->error('保存操作必须通过 POST 提交');
+        }
+
         $data = [];
-        $tab = $this->tab((string) $this->request->get('tab', 'global'));
-        $applyProfile = trim((string) $this->request->get('apply_profile')) === '1';
+        $tab = $this->tab((string) ($_POST['tab'] ?? 'global'));
+        $applyProfile = trim((string) ($_POST['apply_profile'] ?? '')) === '1';
         foreach (Settings::boolKeys() as $key) {
             $data[$key] = '0';
         }
@@ -62,11 +66,6 @@ class Action extends \Typecho\Widget
         foreach (array_keys(Settings::defaults()) as $key) {
             if (array_key_exists($key, $_POST)) {
                 $data[$key] = $_POST[$key];
-                continue;
-            }
-
-            if (array_key_exists($key, $_GET)) {
-                $data[$key] = $_GET[$key];
             }
         }
 

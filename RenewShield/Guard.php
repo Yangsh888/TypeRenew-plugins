@@ -918,41 +918,7 @@ HTML;
 
     private static function storeUploadedFile(array $file, string $target): void
     {
-        $dir = dirname($target);
-        if (!is_dir($dir) && !mkdir($dir, 0755, true) && !is_dir($dir)) {
-            throw new \RuntimeException(_t('上传目录不可写：%s', $dir));
-        }
-
-        if (is_file($target) && !is_writable($dir)) {
-            throw new \RuntimeException(_t('附件写入失败，请检查上传目录权限'));
-        }
-
-        if (is_file($target)) {
-            @unlink($target);
-        }
-
-        if (isset($file['tmp_name'])) {
-            if (!move_uploaded_file((string) $file['tmp_name'], $target)) {
-                throw new \RuntimeException(_t('附件写入失败，请检查上传目录权限'));
-            }
-            return;
-        }
-
-        if (isset($file['bytes']) && is_string($file['bytes'])) {
-            if (file_put_contents($target, $file['bytes']) === false) {
-                throw new \RuntimeException(_t('附件写入失败，请检查上传目录权限'));
-            }
-            return;
-        }
-
-        if (isset($file['bits']) && is_string($file['bits'])) {
-            if (file_put_contents($target, $file['bits']) === false) {
-                throw new \RuntimeException(_t('附件写入失败，请检查上传目录权限'));
-            }
-            return;
-        }
-
-        throw new \RuntimeException(_t('附件上传数据无效'));
+        \Widget\Upload::replaceUploadedFile($file, $target);
     }
 
     private static function browserMinVersion(string $browser, array $settings): int

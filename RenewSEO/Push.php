@@ -45,7 +45,7 @@ class Push
         }
 
         self::$registered = true;
-        Response::getInstance()->addResponder(static function (): void {
+        Response::getInstance()->addBackgroundResponder(static function (): void {
             $task = self::task();
             if (empty($task['urls']) && empty($task['deleted']) && !$task['rebuild']) {
                 return;

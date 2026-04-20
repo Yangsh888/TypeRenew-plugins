@@ -44,6 +44,7 @@ class Plugin implements PluginInterface
 
     public static function deactivate(): string
     {
+        Files::removeGenerated(Settings::load());
         Helper::removeRoute('renew_seo_action');
         Helper::removePanel(3, 'RenewSEO/Panel.php');
         return _t('RenewSEO 已停用');
