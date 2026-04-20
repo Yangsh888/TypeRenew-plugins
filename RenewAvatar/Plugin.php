@@ -224,7 +224,7 @@ class RenewAvatar_Plugin implements PluginInterface
         }
         $uin = $m[1];
         $ttl = (int) ($settings['cacheTtl'] ?? 3600);
-        $key = 'renewavatar:qq:' . self::cacheScope($settings) . ':' . md5($mail);
+        $key = 'renewavatar:qq:' . md5($mail);
         $failKey = $key . ':fail';
         
         $cached = self::cacheGet($key);
@@ -512,15 +512,6 @@ class RenewAvatar_Plugin implements PluginInterface
                 self::reportException('clearCache.' . $scope, $e);
             }
         );
-    }
-
-    private static function cacheScope(array $settings): string
-    {
-        return substr(sha1(json_encode([
-            'priority' => (string) ($settings['priority'] ?? 'qq'),
-            'enableQQ' => (string) ($settings['enableQQ'] ?? '1'),
-            'requestTimeout' => (string) ($settings['requestTimeout'] ?? '3'),
-        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)), 0, 12);
     }
 
     private static function cacheGet(string $key): ?string

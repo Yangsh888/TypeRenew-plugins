@@ -55,14 +55,6 @@
             return null;
         }
     })();
-    const sessionStore = (() => {
-        try {
-            return window.sessionStorage;
-        } catch (e) {
-            return null;
-        }
-    })();
-    const draftSeedStorage = sessionStore || storage;
 
     const modeKey = 'trVditorMode';
     let editor = null;
@@ -75,6 +67,7 @@
     const draftDataKey = () => 'trVditorDraftData:' + cacheId;
     const draftTsKey = () => 'trVditorDraftTs:' + cacheId;
     const draftAttachmentsKey = () => 'trVditorDraftAttachments:' + cacheId;
+    const draftServerTsKey = () => 'trVditorDraftServerTs:' + cacheId;
     
     let draftSaveTimer = null;
     let allowDraftWrite = false;
@@ -93,15 +86,14 @@
         if (!cfg.isNew || !storage || !cfg.localCache) {
             return;
         }
+        const userHash = cfg.userHash || '';
         const baseScope = String(cfg.draftScope || 'vditorrenew:post');
-        const scope = baseScope;
+        const scope = userHash && baseScope.indexOf(':' + userHash) === -1 ? (baseScope + ':' + userHash) : baseScope;
         draftCacheSessionKey = 'trVditorDraft:' + scope;
-        let seed = draftSeedStorage ? draftSeedStorage.getItem(draftCacheSessionKey) : '';
+        let seed = storage.getItem(draftCacheSessionKey);
         if (!seed) {
             seed = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
-            if (draftSeedStorage) {
-                draftSeedStorage.setItem(draftCacheSessionKey, seed);
-            }
+            storage.setItem(draftCacheSessionKey, seed);
         }
         cacheId = scope + ':' + seed;
     };
@@ -257,8 +249,8 @@
             storage.removeItem(draftDataKey());
             storage.removeItem(draftTsKey());
             storage.removeItem(draftAttachmentsKey());
-            if (cfg.isNew && draftCacheSessionKey && draftSeedStorage) {
-                draftSeedStorage.removeItem(draftCacheSessionKey);
+            if (cfg.isNew && draftCacheSessionKey) {
+                storage.removeItem(draftCacheSessionKey);
             }
         } catch (e) {
         }

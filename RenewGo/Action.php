@@ -64,8 +64,7 @@ class RenewGo_Action extends Typecho_Widget
 
         if ($settings['mode'] === 'direct302') {
             $isWhitelisted = RenewGo_Plugin::isWhitelisted($url, $settings);
-            $whitelistOnly = (string) ($settings['directWhitelistOnly'] ?? '1') === '1';
-            if ($whitelistOnly) {
+            if ((string) ($settings['directWhitelistOnly'] ?? '1') === '1') {
                 $whitelist = trim((string) ($settings['whitelist'] ?? ''));
                 if ($whitelist === '') {
                     $this->failPage('go', 'no-whitelist', $url, _t('直跳模式未配置白名单，请联系管理员'), 200, true);
@@ -79,7 +78,7 @@ class RenewGo_Action extends Typecho_Widget
             if (!$this->enforceRateLimit($settings, 'go', $url)) {
                 return;
             }
-            if (!$whitelistOnly || $isWhitelisted) {
+            if ($isWhitelisted) {
                 RenewGo_Plugin::logEvent('go', 'redirect', $url, (string) $this->request->getReferer(), true);
                 $this->response->redirect($url);
                 return;
@@ -111,11 +110,6 @@ class RenewGo_Action extends Typecho_Widget
         $keepDays = (int) ($settings['logKeepDays'] ?? 0);
         if ($keepDays > 0) {
             $this->maybeCleanupLogs($keepDays);
-        }
-
-        if (($settings['mode'] ?? '') === 'off') {
-            $this->failPage('jump', 'disabled', '', _t('外链跳转功能已关闭'), 403, true);
-            return;
         }
 
         $encoded = trim((string) $this->request->get('target', ''));
