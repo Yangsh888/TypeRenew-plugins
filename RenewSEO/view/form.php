@@ -318,18 +318,6 @@ use TypechoPlugin\RenewSEO\Text;
                 </div>
                 <div class="renewseo-list-item">
                     <div class="renewseo-list-item-meta">
-                        <h4 class="renewseo-list-item-title">补充图片信息</h4>
-                        <p class="renewseo-list-item-desc">在现有 sitemap.xml 中为文章和页面补充图片地址信息</p>
-                    </div>
-                    <div class="renewseo-list-item-control">
-                        <label class="renewseo-switch">
-                            <input type="checkbox" name="sitemapImage" value="1"<?php echo $settings['sitemapImage'] === '1' ? ' checked' : ''; ?>>
-                            <span class="renewseo-slider"></span>
-                        </label>
-                    </div>
-                </div>
-                <div class="renewseo-list-item">
-                    <div class="renewseo-list-item-meta">
                         <h4 class="renewseo-list-item-title">自动重建间隔（秒）</h4>
                     </div>
                     <div class="renewseo-list-item-control">

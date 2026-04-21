@@ -77,7 +77,6 @@ class Settings
             'sitemapCategory' => '1',
             'sitemapTag' => '0',
             'sitemapAuthor' => '0',
-            'sitemapImage' => '1',
             'sitemapPriorityHome' => '1.0',
             'sitemapPriorityPost' => '0.8',
             'sitemapPriorityPage' => '0.7',
@@ -140,7 +139,6 @@ class Settings
             'sitemapCategory',
             'sitemapTag',
             'sitemapAuthor',
-            'sitemapImage',
             'ogEnable',
             'timeEnable',
             'schemaArticle',
@@ -201,7 +199,6 @@ class Settings
         $settings['altTemplate'] = self::text($settings['altTemplate'] ?? '{title} - {site}', 120);
         $settings['baiduToken'] = self::text($settings['baiduToken'] ?? '', 200);
         $settings['indexNowKey'] = self::token($settings['indexNowKey'] ?? '');
-        unset($settings['indexNowKeyPath']);
         $settings['bingApiKey'] = self::text($settings['bingApiKey'] ?? '', 255);
 
         foreach ([

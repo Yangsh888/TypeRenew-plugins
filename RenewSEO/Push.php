@@ -52,7 +52,7 @@ class Push
             }
 
             $settings = Settings::load();
-            if (($settings['pushAsync'] ?? '1') !== '1') {
+            if (($settings['pushAsync'] ?? '1') !== '1' || !self::shouldDispatchAsync($settings)) {
                 self::process($task);
                 return;
             }
@@ -68,6 +68,7 @@ class Push
                 if (!$client) {
                     throw new \RuntimeException('http client unavailable');
                 }
+                $client->setHeader('User-Agent', (string) (Settings::options()->generator ?? 'TypeRenew'));
                 $client->setTimeout(3);
                 $client->setMethod('POST');
                 $client->setOption(CURLOPT_CONNECTTIMEOUT, 1);
@@ -175,6 +176,23 @@ class Push
             ];
         }
         return $normalized;
+    }
+
+    private static function shouldDispatchAsync(array $settings): bool
+    {
+        if (!empty($settings['baiduEnable']) && !empty($settings['baiduToken'])) {
+            return true;
+        }
+
+        if (!empty($settings['indexNowEnable']) && !empty($settings['indexNowKey'])) {
+            return true;
+        }
+
+        if (!empty($settings['bingEnable']) && !empty($settings['bingApiKey'])) {
+            return true;
+        }
+
+        return false;
     }
 
     private static function pushBaidu(array $items, array $settings): ?array

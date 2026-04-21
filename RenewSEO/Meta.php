@@ -557,17 +557,6 @@ class Meta
         );
     }
 
-    public static function sitemapImage(array $row, array $fields, array $settings): string
-    {
-        return self::resolveImage(
-            trim((string) ($fields['seo_image'] ?? '')),
-            $fields,
-            (string) ($row['text'] ?? ''),
-            $settings,
-            false
-        );
-    }
-
     private static function resolveImage(string $custom, array $fields, string $raw, array $settings, bool $allowDefault): string
     {
         if ($custom !== '') {

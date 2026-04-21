@@ -83,11 +83,9 @@ class RenewGo_Action extends Typecho_Widget
             if (!$this->enforceRateLimit($settings, 'go', $url)) {
                 return;
             }
-            if (!$whitelistOnly || $isWhitelisted) {
-                RenewGo_Plugin::logEvent('go', 'redirect', $url, (string) $this->request->getReferer(), true);
-                $this->response->redirect($url);
-                return;
-            }
+            RenewGo_Plugin::logEvent('go', 'redirect', $url, (string) $this->request->getReferer(), true);
+            $this->response->redirect($url);
+            return;
         }
 
         $jumpUrl = RenewGo_Plugin::buildJumpUrl($encoded);
