@@ -243,9 +243,10 @@ class RenewGo_Action extends Typecho_Widget
             }
         }
         if ($site === '') {
-            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
-            $host = (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
-            $site = $scheme . $host . '/';
+            $site = (string) $this->request->getUrlPrefix();
+            if ($site === '') {
+                $site = 'http://localhost';
+            }
         }
         return rtrim($site, '/') . '/';
     }
@@ -311,6 +312,7 @@ class RenewGo_Action extends Typecho_Widget
         $lockKey = 'renewgo:cleanup_lock';
         $now = time();
         $interval = self::CLEANUP_INTERVAL;
+        $locked = false;
 
         if ($cache->enabled()) {
             $hit = false;
@@ -319,9 +321,10 @@ class RenewGo_Action extends Typecho_Widget
                 return;
             }
 
-            if (!$cache->set($lockKey, $now, self::CLEANUP_LOCK_TTL)) {
+            if (!$cache->tryLock($lockKey, self::CLEANUP_LOCK_TTL)) {
                 return;
             }
+            $locked = true;
         }
 
         try {
@@ -329,10 +332,11 @@ class RenewGo_Action extends Typecho_Widget
             if ($cache->enabled()) {
                 $cache->set($cacheKey, $now, $interval * 2);
             }
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            error_log('RenewGo.cleanupLogs: ' . $e->getMessage());
         } finally {
-            if ($cache->enabled()) {
-                $cache->delete($lockKey);
+            if ($cache->enabled() && $locked) {
+                $cache->unlock($lockKey);
             }
         }
     }

@@ -360,6 +360,7 @@ class Settings
                 'class' => get_class($e)
             ]);
         } catch (\Throwable $ignored) {
+            error_log('RenewSEO.' . $scope . ': ' . $e->getMessage());
         }
     }
 

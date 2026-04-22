@@ -572,14 +572,49 @@ class Settings
             return '';
         }
 
-        if (preg_match('#^https?://#i', $value)) {
-            return $value;
-        }
-
         if (str_starts_with($value, '/')) {
             return preg_replace('#/+#', '/', $value) ?? '/';
         }
 
+        if (preg_match('#^https?://#i', $value)) {
+            return self::sameSiteRelative($value);
+        }
+
         return '';
+    }
+
+    private static function sameSiteRelative(string $value): string
+    {
+        $target = Common::parseUrl($value);
+        $site = Common::parseUrl(self::siteUrl());
+
+        if ($target === [] || $site === []) {
+            return '';
+        }
+
+        $targetHost = strtolower((string) ($target['host'] ?? ''));
+        $siteHost = strtolower((string) ($site['host'] ?? ''));
+        if ($targetHost === '' || $siteHost === '' || $targetHost !== $siteHost) {
+            return '';
+        }
+
+        $targetScheme = strtolower((string) ($target['scheme'] ?? ''));
+        $siteScheme = strtolower((string) ($site['scheme'] ?? ''));
+        if ($targetScheme !== '' && $siteScheme !== '' && $targetScheme !== $siteScheme) {
+            return '';
+        }
+
+        $targetPort = (int) ($target['port'] ?? 0);
+        $sitePort = (int) ($site['port'] ?? 0);
+        if ($targetPort > 0 && $sitePort > 0 && $targetPort !== $sitePort) {
+            return '';
+        }
+
+        $path = '/' . ltrim((string) ($target['path'] ?? '/'), '/');
+        $path = preg_replace('#/+#', '/', $path) ?? '/';
+        $query = isset($target['query']) ? '?' . (string) $target['query'] : '';
+        $fragment = isset($target['fragment']) ? '#' . (string) $target['fragment'] : '';
+
+        return $path . $query . $fragment;
     }
 }

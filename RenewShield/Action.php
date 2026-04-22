@@ -129,7 +129,7 @@ class Action extends \Typecho\Widget
         Security::alloc()->protect();
     }
 
-    private function error(string $message): never
+    private function error(string $message): void
     {
         Notice::alloc()->set($message, 'error');
         $this->response->redirect(Settings::panelUrl());

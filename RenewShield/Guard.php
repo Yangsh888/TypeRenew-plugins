@@ -571,13 +571,13 @@ HTML;
         self::challenge($context, $settings, $rule, $score, $message, $payload);
     }
 
-    private static function block(string $scope, string $rule, int $score, string $message, array $payload = []): never
+    private static function block(string $scope, string $rule, int $score, string $message, array $payload = []): void
     {
         Log::write($scope, 'deny', 'block', $rule, $score, $message, $payload);
         Page::block('请求已被拦截', $message, Log::payloadSummary($payload));
     }
 
-    private static function challenge(Context $context, array $settings, string $rule, int $score, string $message, array $payload = []): never
+    private static function challenge(Context $context, array $settings, string $rule, int $score, string $message, array $payload = []): void
     {
         Log::write($context->routeScope(), 'verify', 'challenge', $rule, $score, $message, $payload);
 
@@ -605,19 +605,19 @@ HTML;
         Log::write($scope, 'inspect', 'observe', $rule, $score, $message, $payload);
     }
 
-    private static function denyComment(string $rule, string $message, array $payload = []): never
+    private static function denyComment(string $rule, string $message, array $payload = []): void
     {
         Log::write('comment', 'deny', 'block', $rule, 70, $message, $payload);
         throw new \Typecho\Exception($message);
     }
 
-    private static function denyUpload(string $rule, string $message, array $payload = []): never
+    private static function denyUpload(string $rule, string $message, array $payload = []): void
     {
         Log::write('upload', 'deny', 'block', $rule, 80, $message, $payload);
         throw new \RuntimeException($message);
     }
 
-    private static function denyAccess(array $decision, string $rule): never
+    private static function denyAccess(array $decision, string $rule): void
     {
         Log::write('access', 'deny', 'block', $rule, 90, '受限资源访问被拦截', [
             'action' => $decision['action'] ?? 'html',
@@ -1009,16 +1009,10 @@ HTML;
 
     private static function safeRedirect(string $uri): string
     {
-        $uri = trim($uri);
-        if ($uri === '') {
-            return '/';
-        }
+        $settings = Settings::normalize(['accessRedirect' => $uri]);
+        $redirect = trim((string) ($settings['accessRedirect'] ?? ''));
 
-        if (preg_match('#^https?://#i', $uri)) {
-            return $uri;
-        }
-
-        return self::safeReturn($uri);
+        return $redirect !== '' ? self::safeReturn($redirect) : '/';
     }
 
     private static function ban(string $ip, int $ttl, string $reason): void

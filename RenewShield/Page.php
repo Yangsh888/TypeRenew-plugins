@@ -11,7 +11,7 @@ if (!defined('__TYPECHO_ROOT_DIR__')) {
 
 class Page
 {
-    public static function block(string $title, string $message, array $meta = []): never
+    public static function block(string $title, string $message, array $meta = []): void
     {
         $body = '<div class="renewshield-copy">'
             . '<p class="renewshield-main">' . Text::e($message) . '</p>'
@@ -22,7 +22,7 @@ class Page
         self::render(403, $title, $body);
     }
 
-    public static function access(string $title, string $html, string $redirect = ''): never
+    public static function access(string $title, string $html, string $redirect = ''): void
     {
         $body = '<div class="renewshield-copy">' . $html;
         if (!str_contains($html, 'renewshield-btn')) {
@@ -36,7 +36,7 @@ class Page
         self::render(403, $title, $body);
     }
 
-    public static function challenge(string $title, string $message, string $action, string $token, int $wait, array $meta = []): never
+    public static function challenge(string $title, string $message, string $action, string $token, int $wait, array $meta = []): void
     {
         $body = '<div class="renewshield-copy">'
             . '<p class="renewshield-main">' . Text::e($message) . '</p>'
@@ -109,7 +109,7 @@ class Page
             . '</a>';
     }
 
-    private static function render(int $status, string $title, string $body): never
+    private static function render(int $status, string $title, string $body): void
     {
         Response::getInstance()
             ->setStatus($status)

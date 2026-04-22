@@ -256,7 +256,7 @@ class Files
 
         foreach (glob(Settings::rootPath('sitemap-*.xml')) ?: [] as $path) {
             if (is_file($path)) {
-                @unlink($path);
+                self::unlinkOrFail($path, basename($path));
             }
         }
 
@@ -525,7 +525,7 @@ class Files
         foreach (glob(Settings::rootPath('sitemap-*.xml')) ?: [] as $path) {
             $name = basename($path);
             if (!isset($keepMap[$name]) && is_file($path)) {
-                @unlink($path);
+                self::unlinkOrFail($path, $name);
             }
         }
     }
@@ -548,7 +548,26 @@ class Files
 
         $path = Settings::rootPath($relative);
         if (is_file($path)) {
-            @unlink($path);
+            self::unlinkOrFail($path, $relative);
+        }
+    }
+
+    private static function unlinkOrFail(string $path, string $label): void
+    {
+        $error = null;
+        set_error_handler(static function (int $severity, string $message) use (&$error): bool {
+            $error = $message;
+            return true;
+        });
+
+        try {
+            $deleted = unlink($path);
+        } finally {
+            restore_error_handler();
+        }
+
+        if (!$deleted && is_file($path)) {
+            throw new \RuntimeException($error ? '无法删除文件：' . $label . '（' . $error . '）' : '无法删除文件：' . $label);
         }
     }
 
