@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace TypechoPlugin\RenewSEO;
 
+use Typecho\Cache;
 use Typecho\Db;
 use Utils\Schema;
 
@@ -125,7 +126,7 @@ class Log
             return;
         }
 
-        $cache = Settings::cache();
+        $cache = Cache::getInstance();
         $key = 'renewseo:last_cleanup';
         $now = time();
         if ($cache->enabled()) {
@@ -287,11 +288,11 @@ class Log
         }
 
         if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false) {
-            $packed = @inet_pton($ip);
+            $packed = inet_pton($ip);
             if ($packed !== false) {
                 $masked = substr($packed, 0, 8) . str_repeat("\0", 8);
-                $normalized = @inet_ntop($masked);
-                if (is_string($normalized) && $normalized !== false) {
+                $normalized = inet_ntop($masked);
+                if (is_string($normalized)) {
                     return $normalized;
                 }
             }

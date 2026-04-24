@@ -15,6 +15,7 @@ if (!defined('__TYPECHO_ROOT_DIR__')) {
 use Typecho\Cache;
 use Typecho\Common;
 use Typecho\Db;
+use Typecho\Plugin\Exception as PluginException;
 use Typecho\Plugin\PluginInterface;
 use Typecho\Widget\Helper\Form;
 use Utils\Helper;
@@ -287,7 +288,11 @@ class RenewGo_Plugin implements PluginInterface
             return $secret;
         }
 
-        $pluginSecret = (string) ($options->plugin('RenewGo')->signSecret ?? '');
+        try {
+            $pluginSecret = (string) ($options->plugin('RenewGo')->signSecret ?? '');
+        } catch (PluginException $e) {
+            $pluginSecret = '';
+        }
         if ($pluginSecret !== '') {
             return $pluginSecret;
         }
@@ -460,15 +465,13 @@ class RenewGo_Plugin implements PluginInterface
         return $normalized;
     }
 
-    public static function rewriteContent($content, $widget = null): string
+    public static function rewriteContent($content, $_widget = null): string
     {
-        unset($widget);
         return self::rewriteHtml((string) $content, 'content');
     }
 
-    public static function rewriteComments($content, $widget = null): string
+    public static function rewriteComments($content, $_widget = null): string
     {
-        unset($widget);
         return self::rewriteHtml((string) $content, 'comments');
     }
 
@@ -497,6 +500,9 @@ class RenewGo_Plugin implements PluginInterface
     {
         $settings = self::getSettings();
         if (!self::isEnabled($settings) || !self::isRewriteEnabled($settings, 'fallback')) {
+            return;
+        }
+        if (self::shouldSkipFallback()) {
             return;
         }
         if (self::$buffering) {
@@ -530,6 +536,10 @@ class RenewGo_Plugin implements PluginInterface
         ob_end_clean();
         self::$buffering = false;
         self::$bufferLevel = 0;
+        if (!self::looksLikeHtmlDocument($content)) {
+            echo $content;
+            return;
+        }
         $content = self::rewriteHtml($content, 'fallback', $settings);
         if (self::shouldInjectClientScript($settings)) {
             $content = self::injectClientScript($content, $settings);
@@ -798,7 +808,7 @@ class RenewGo_Plugin implements PluginInterface
         $db = Db::get();
         try {
             return (int) $db->query($db->delete('table.renew_go_logs')->where('created_at < ?', $before));
-        } catch (Throwable $e) {
+        } catch (Throwable) {
             return 0;
         }
     }
@@ -1037,6 +1047,39 @@ class RenewGo_Plugin implements PluginInterface
             && self::MODE_OFF !== (string) ($settings['mode'] ?? self::MODE_OFF);
     }
 
+    private static function shouldSkipFallback(): bool
+    {
+        if (defined('__TYPECHO_ADMIN__')) {
+            return true;
+        }
+
+        $request = \Typecho\Request::getInstance();
+        $path = strtolower((string) ($request->getRequestUrl() ?? ''));
+        if ($path !== '' && str_contains($path, '/action/')) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static function looksLikeHtmlDocument(string $html): bool
+    {
+        if ($html === '') {
+            return false;
+        }
+
+        $trimmed = ltrim($html);
+        if ($trimmed === '') {
+            return false;
+        }
+
+        if (stripos($trimmed, '<!doctype html') === 0 || stripos($trimmed, '<html') === 0) {
+            return true;
+        }
+
+        return stripos($trimmed, '<body') !== false;
+    }
+
     private static function buildClientScriptTag(array $settings): string
     {
         $rules = self::parseRules((string) ($settings['whitelist'] ?? ''));
@@ -1111,7 +1154,16 @@ class RenewGo_Plugin implements PluginInterface
             return $decoded;
         }
 
-        $legacy = @unserialize($value, ['allowed_classes' => false]);
+        set_error_handler(static function (): bool {
+            return true;
+        });
+
+        try {
+            $legacy = unserialize($value, ['allowed_classes' => false]);
+        } finally {
+            restore_error_handler();
+        }
+
         return is_array($legacy) ? $legacy : [];
     }
 

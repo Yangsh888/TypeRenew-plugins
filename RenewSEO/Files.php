@@ -7,8 +7,8 @@ use Typecho\Cache;
 use Typecho\Db;
 use Typecho\Router;
 use Typecho\Router\ParamsDelegateInterface;
+use Utils\Helper;
 use Widget\Contents\Page\Rows as PageRows;
-use Widget\Contents\Post\Recent as PostRecent;
 use Widget\Metas\Category\Rows as CategoryRows;
 use Widget\Metas\Tag\Cloud as TagCloud;
 use Widget\Users\Author as AuthorWidget;
@@ -19,12 +19,39 @@ if (!defined('__TYPECHO_ROOT_DIR__')) {
 
 class Files
 {
+    private static function cleanupTempFile(string $path): void
+    {
+        set_error_handler(static function (): bool {
+            return true;
+        });
+
+        try {
+            unlink($path);
+        } finally {
+            restore_error_handler();
+        }
+    }
+
+    private static function restoreBackupFile(string $from, string $to): void
+    {
+        set_error_handler(static function (): bool {
+            return true;
+        });
+
+        try {
+            rename($from, $to);
+        } finally {
+            restore_error_handler();
+        }
+    }
+
     private const STATE_KEY = 'renewseo:sync:state:v1';
     private const STATE_OPTION = 'renewSeoSyncState';
 
     private static array $runtimeState = [
         'pendingAt' => 0,
         'lastSyncAt' => 0,
+        'managed' => [],
     ];
 
     public static function sync(string $reason = 'manual', bool $force = false, bool $writeInfoLog = true): array
@@ -36,6 +63,7 @@ class Files
             self::saveState([
                 'pendingAt' => 0,
                 'lastSyncAt' => time(),
+                'managed' => [],
             ], $settings);
             return [
                 'ok' => true,
@@ -45,7 +73,7 @@ class Files
         }
 
         if (!$force && !self::shouldSyncNow($settings)) {
-            self::markPendingSync($reason);
+            self::markPendingSync();
             return [
                 'ok' => true,
                 'skipped' => true,
@@ -56,6 +84,7 @@ class Files
 
         try {
             $desired = [];
+            $tracked = self::trackedFiles($settings);
 
             if (($settings['robotsEnable'] ?? '1') === '1') {
                 $desired['robots.txt'] = self::buildRobots($settings);
@@ -74,10 +103,11 @@ class Files
                 self::writeFile($relative, $content);
             }
 
-            self::removeUnexpectedGenerated($settings, array_keys($desired));
+            self::removeUnexpectedGenerated($tracked, array_keys($desired));
             self::saveState([
                 'pendingAt' => 0,
                 'lastSyncAt' => time(),
+                'managed' => array_values(array_keys($desired)),
             ], $settings);
 
             if ($writeInfoLog) {
@@ -120,7 +150,7 @@ class Files
             return true;
         }
 
-        $state = self::state($settings);
+        $state = self::state();
         $now = time();
 
         if (!empty($state['pendingAt'])) {
@@ -130,10 +160,10 @@ class Files
         return ($now - (int) ($state['lastSyncAt'] ?? 0)) >= $debounce;
     }
 
-    public static function markPendingSync(string $reason = 'content'): void
+    public static function markPendingSync(): void
     {
         $settings = Settings::load();
-        $state = self::state($settings);
+        $state = self::state();
         if (empty($state['pendingAt'])) {
             $state['pendingAt'] = time();
         }
@@ -182,7 +212,11 @@ class Files
     public static function status(array $settings): array
     {
         $files = [];
-        foreach (self::managedFiles($settings) as $relative) {
+        $managed = array_values(array_filter(array_unique(array_merge(
+            self::expectedFiles($settings),
+            self::trackedFiles($settings)
+        ))));
+        foreach ($managed as $relative) {
             $path = Settings::rootPath($relative);
             $exists = is_file($path);
             $files[] = [
@@ -250,19 +284,14 @@ class Files
     public static function removeGenerated(?array $settings = null): void
     {
         $settings = $settings ?? Settings::load();
-        foreach (self::managedFiles($settings) as $relative) {
+        foreach (self::trackedFiles($settings, true) as $relative) {
             self::removeFile($relative);
-        }
-
-        foreach (glob(Settings::rootPath('sitemap-*.xml')) ?: [] as $path) {
-            if (is_file($path)) {
-                self::unlinkOrFail($path, basename($path));
-            }
         }
 
         self::saveState([
             'pendingAt' => 0,
-            'lastSyncAt' => (int) (self::state($settings)['lastSyncAt'] ?? 0),
+            'lastSyncAt' => (int) (self::state()['lastSyncAt'] ?? 0),
+            'managed' => [],
         ], $settings);
     }
 
@@ -307,21 +336,14 @@ class Files
     {
         $entries = [[
             'loc' => Settings::siteUrl(),
-            'lastmod' => self::iso8601((int) (Settings::options()->time ?? time())),
+            'lastmod' => self::iso8601((int) (Helper::options()->time ?? time())),
             'changefreq' => (string) ($settings['sitemapFreqHome'] ?? 'daily'),
             'priority' => (string) ($settings['sitemapPriorityHome'] ?? '1.0'),
         ]];
 
         if (($settings['sitemapPost'] ?? '1') === '1') {
-            $posts = PostRecent::allocWithAlias('renewseo-posts', ['pageSize' => 100000], null, false)
-                ->toArray(['permalink', 'modified', 'created']);
-            foreach ($posts as $row) {
-                $entries[] = self::entry(
-                    (string) ($row['permalink'] ?? ''),
-                    (int) ($row['modified'] ?? $row['created'] ?? 0),
-                    (string) ($settings['sitemapFreqPost'] ?? 'weekly'),
-                    (string) ($settings['sitemapPriorityPost'] ?? '0.8')
-                );
+            foreach (self::postEntries($settings) as $entry) {
+                $entries[] = $entry;
             }
         }
 
@@ -454,7 +476,7 @@ class Files
             }
         };
 
-        return Router::url($type, $delegate, Settings::options()->index);
+        return Router::url($type, $delegate, Helper::options()->index);
     }
 
     private static function firstCategory(Db $db, int $cid): ?array
@@ -507,37 +529,55 @@ class Files
     private static function writeFile(string $relative, string $content): void
     {
         $path = Settings::rootPath($relative);
-        $result = @file_put_contents($path, $content, LOCK_EX);
-        if ($result === false) {
+        $directory = dirname($path);
+        if (!is_dir($directory)) {
+            throw new \RuntimeException('目标目录不存在：' . $relative);
+        }
+
+        $tempPath = $directory . DIRECTORY_SEPARATOR . '.' . basename($path) . '.tmp.' . bin2hex(random_bytes(6));
+        $backupPath = $directory . DIRECTORY_SEPARATOR . '.' . basename($path) . '.bak.' . bin2hex(random_bytes(6));
+        $backupCreated = false;
+        $written = file_put_contents($tempPath, $content, LOCK_EX);
+        if ($written === false) {
             throw new \RuntimeException('无法写入文件：' . $relative);
+        }
+
+        try {
+            if (is_file($path)) {
+                if (!rename($path, $backupPath)) {
+                    throw new \RuntimeException('无法替换文件：' . $relative);
+                }
+                $backupCreated = true;
+            }
+
+            if (!rename($tempPath, $path)) {
+                if ($backupCreated && is_file($backupPath)) {
+                    rename($backupPath, $path);
+                }
+                throw new \RuntimeException('无法写入文件：' . $relative);
+            }
+
+            if ($backupCreated && is_file($backupPath) && !unlink($backupPath) && is_file($backupPath)) {
+                throw new \RuntimeException('无法清理旧文件备份：' . $relative);
+            }
+        } finally {
+            if (is_file($tempPath)) {
+                self::cleanupTempFile($tempPath);
+            }
+            if (is_file($backupPath) && !is_file($path)) {
+                self::restoreBackupFile($backupPath, $path);
+            }
         }
     }
 
-    private static function removeUnexpectedGenerated(array $settings, array $keep): void
+    private static function removeUnexpectedGenerated(array $tracked, array $keep): void
     {
         $keepMap = array_fill_keys($keep, true);
-        foreach (self::managedFiles($settings) as $relative) {
+        foreach ($tracked as $relative) {
             if (!isset($keepMap[$relative])) {
                 self::removeFile($relative);
             }
         }
-
-        foreach (glob(Settings::rootPath('sitemap-*.xml')) ?: [] as $path) {
-            $name = basename($path);
-            if (!isset($keepMap[$name]) && is_file($path)) {
-                self::unlinkOrFail($path, $name);
-            }
-        }
-    }
-
-    private static function managedFiles(array $settings): array
-    {
-        $files = ['robots.txt', 'sitemap.xml', 'sitemap.txt', Settings::keyRelativePath($settings)];
-        foreach (glob(Settings::rootPath('sitemap-*.xml')) ?: [] as $path) {
-            $files[] = basename($path);
-        }
-
-        return array_values(array_filter(array_unique($files)));
     }
 
     private static function removeFile(string $relative): void
@@ -547,15 +587,12 @@ class Files
         }
 
         $path = Settings::rootPath($relative);
-        if (is_file($path)) {
-            self::unlinkOrFail($path, $relative);
+        if (!is_file($path)) {
+            return;
         }
-    }
 
-    private static function unlinkOrFail(string $path, string $label): void
-    {
         $error = null;
-        set_error_handler(static function (int $severity, string $message) use (&$error): bool {
+        set_error_handler(static function (int $_severity, string $message) use (&$error): bool {
             $error = $message;
             return true;
         });
@@ -567,11 +604,11 @@ class Files
         }
 
         if (!$deleted && is_file($path)) {
-            throw new \RuntimeException($error ? '无法删除文件：' . $label . '（' . $error . '）' : '无法删除文件：' . $label);
+            throw new \RuntimeException($error ? '无法删除文件：' . $relative . '（' . $error . '）' : '无法删除文件：' . $relative);
         }
     }
 
-    private static function state(array $settings): array
+    private static function state(): array
     {
         $cache = Cache::getInstance();
         if ($cache->enabled()) {
@@ -636,6 +673,10 @@ class Files
             $value = json_encode([
                 'pendingAt' => (int) ($state['pendingAt'] ?? 0),
                 'lastSyncAt' => (int) ($state['lastSyncAt'] ?? 0),
+                'managed' => array_values(array_filter(array_map(
+                    static fn($item): string => is_string($item) ? trim($item) : '',
+                    (array) ($state['managed'] ?? [])
+                ))),
             ]);
 
             $exists = $db->fetchRow(
@@ -692,6 +733,83 @@ class Files
             }
         }
         return array_values(array_unique($result));
+    }
+
+    private static function expectedFiles(array $settings): array
+    {
+        return array_values(array_filter([
+            'robots.txt',
+            'sitemap.xml',
+            'sitemap.txt',
+            Settings::keyRelativePath($settings),
+        ]));
+    }
+
+    private static function trackedFiles(array $settings, bool $includeLegacyFallback = false): array
+    {
+        $state = self::state();
+        $tracked = array_map(
+            static fn($item): string => is_string($item) ? trim($item) : '',
+            (array) ($state['managed'] ?? [])
+        );
+
+        if ($includeLegacyFallback && !array_key_exists('managed', $state)) {
+            foreach (self::legacyTrackedFiles($settings) as $relative) {
+                $tracked[] = $relative;
+            }
+        }
+
+        return array_values(array_filter(array_unique($tracked)));
+    }
+
+    private static function legacyTrackedFiles(array $settings): array
+    {
+        $files = self::expectedFiles($settings);
+        foreach (glob(Settings::rootPath('sitemap-*.xml')) ?: [] as $path) {
+            if (is_file($path)) {
+                $files[] = basename($path);
+            }
+        }
+
+        return array_values(array_filter(array_unique($files)));
+    }
+
+    private static function postEntries(array $settings): array
+    {
+        $entries = [];
+        $db = Db::get();
+        $cursor = 0;
+        $limit = 1000;
+
+        do {
+            $rows = $db->fetchAll(
+                $db->select('cid', 'slug', 'created', 'modified', 'type', 'status', 'authorId')
+                    ->from('table.contents')
+                    ->where('status = ?', 'publish')
+                    ->where('created < ?', Helper::options()->time)
+                    ->where('type = ?', 'post')
+                    ->where('cid > ?', $cursor)
+                    ->order('cid', Db::SORT_ASC)
+                    ->limit($limit)
+            );
+
+            foreach ($rows as $row) {
+                $cursor = max($cursor, (int) ($row['cid'] ?? 0));
+                $url = self::contentUrl($db, $row);
+                if ($url === '') {
+                    continue;
+                }
+
+                $entries[] = self::entry(
+                    $url,
+                    (int) ($row['modified'] ?? $row['created'] ?? 0),
+                    (string) ($settings['sitemapFreqPost'] ?? 'weekly'),
+                    (string) ($settings['sitemapPriorityPost'] ?? '0.8')
+                );
+            }
+        } while (count($rows) === $limit);
+
+        return $entries;
     }
 
     private static function renderUrlSet(array $entries): string

@@ -43,8 +43,8 @@ class VditorRenew_Bridge
 
         $toolbar = self::toolbar($settings);
         $legacy = $isLegacy ? $settings['legacy'] : 'raw';
-        $allowMarkdown = true;
-        $forceMarkdown = true;
+        $forceMarkdown = !$isLegacy || $legacy === 'convert';
+        $allowMarkdown = $markdownEnabled || $isMarkdown || $forceMarkdown;
 
         $user = \Widget\User::alloc();
         $isNew = empty($content->cid);

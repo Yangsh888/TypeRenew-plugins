@@ -5,6 +5,7 @@ namespace TypechoPlugin\RenewSEO;
 
 use Typecho\Http\Client;
 use Typecho\Response;
+use Utils\Helper;
 
 if (!defined('__TYPECHO_ROOT_DIR__')) {
     exit;
@@ -37,7 +38,7 @@ class Push
         self::$queue['rebuild'] = self::$queue['rebuild'] || $rebuild;
         self::$queue['reasons'][$reason] = true;
         if (!$rebuild) {
-            Files::markPendingSync($reason);
+            Files::markPendingSync();
         }
 
         if (self::$registered) {
@@ -68,10 +69,12 @@ class Push
                 if (!$client) {
                     throw new \RuntimeException('http client unavailable');
                 }
-                $client->setHeader('User-Agent', (string) (Settings::options()->generator ?? 'TypeRenew'));
+                $client->setHeader('User-Agent', (string) (Helper::options()->generator ?? 'TypeRenew'));
                 $client->setTimeout(3);
                 $client->setMethod('POST');
-                $client->setOption(CURLOPT_CONNECTTIMEOUT, 1);
+                if (defined('CURLOPT_CONNECTTIMEOUT')) {
+                    $client->setOption(CURLOPT_CONNECTTIMEOUT, 1);
+                }
                 $client->setHeader('Content-Type', 'application/json; charset=utf-8');
                 $client->setJson($payload);
                 $client->send(Settings::actionUrl('async'));
@@ -132,7 +135,7 @@ class Push
 
     public static function makeAsyncToken(int $ts): string
     {
-        $secret = (string) (Settings::options()->secret ?? Settings::siteHost());
+        $secret = (string) (Helper::options()->secret ?? Settings::siteHost());
         return hash_hmac('sha256', 'renewseo|' . $ts, $secret);
     }
 
@@ -360,25 +363,9 @@ class Push
                 'body' => $e->getMessage(),
             ];
         }
-
-        $context = stream_context_create([
-            'http' => [
-                'method' => 'POST',
-                'timeout' => $timeout,
-                'header' => implode("\r\n", $headers),
-                'content' => $body,
-                'ignore_errors' => true,
-            ],
-        ]);
-        $responseBody = @file_get_contents($url, false, $context);
-        $status = 500;
-        if (!empty($http_response_header[0]) && preg_match('#\s(\d{3})\s#', $http_response_header[0], $m)) {
-            $status = (int) $m[1];
-        }
-
         return [
-            'status' => $status,
-            'body' => is_string($responseBody) ? $responseBody : '',
+            'status' => 500,
+            'body' => 'http client unavailable',
         ];
     }
 }

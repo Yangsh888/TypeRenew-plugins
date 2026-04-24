@@ -642,7 +642,7 @@ HTML;
         $payload = array_merge($extra, [
             'type' => $type,
             'ip' => sha1($context->ip),
-            'ua' => sha1(strtolower($context->ua)),
+            'ctx' => self::contextFingerprint($context),
             'iat' => time(),
             'exp' => time() + max(60, $ttl),
         ]);
@@ -676,7 +676,7 @@ HTML;
             return null;
         }
 
-        if (($payload['ip'] ?? '') !== sha1($context->ip) || ($payload['ua'] ?? '') !== sha1(strtolower($context->ua))) {
+        if (($payload['ip'] ?? '') !== sha1($context->ip) || ($payload['ctx'] ?? '') !== self::contextFingerprint($context)) {
             return null;
         }
 
@@ -691,6 +691,18 @@ HTML;
         }
 
         return self::readToken($token, 'pass', $context) !== null;
+    }
+
+    private static function contextFingerprint(Context $context): string
+    {
+        $path = strtolower(trim((string) ($context->path ?? '')));
+        $prefix = $path;
+        if ($prefix !== '' && str_contains($prefix, '/')) {
+            $segments = array_values(array_filter(explode('/', trim($prefix, '/')), 'strlen'));
+            $prefix = isset($segments[0]) ? '/' . $segments[0] : '/';
+        }
+
+        return sha1(strtolower($context->method . '|' . $context->routeScope() . '|' . $prefix));
     }
 
     private static function commentViewAt(Context $context, int $contentId): int

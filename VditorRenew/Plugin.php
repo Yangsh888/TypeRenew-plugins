@@ -68,7 +68,7 @@ class VditorRenew_Plugin implements PluginInterface
         $legacy = new Form\Element\Select(
             'legacy',
             [
-                'raw' => _t('旧文按原样内容编辑（不推荐）'),
+                'raw' => _t('旧文按原样内容编辑'),
                 'convert' => _t('旧文自动转换为 Markdown')
             ],
             (string) $defaults['legacy'],
@@ -85,7 +85,7 @@ class VditorRenew_Plugin implements PluginInterface
                 'outline' => _t('启用大纲面板'),
                 'counter' => _t('启用字数统计'),
                 'emoji' => _t('启用表情输入'),
-                'localCache' => _t('启用浏览器本地草稿缓存（推荐）'),
+                'localCache' => _t('启用浏览器本地草稿缓存'),
                 'followTheme' => _t('跟随 Renew UI 深浅主题'),
                 'hljs' => _t('启用代码高亮')
             ],
@@ -141,26 +141,7 @@ class VditorRenew_Plugin implements PluginInterface
 
     public static function configHandle(array &$settings, bool $isInit)
     {
-        $normalized = self::normalize(array_merge(self::defaults(), $settings));
-        $settings = [
-            'enabled' => (string) ($normalized['enabled'] ? '1' : '0'),
-            'mode' => $normalized['mode'],
-            'legacy' => $normalized['legacy'],
-            'features' => array_keys(array_filter([
-                'modeSwitch' => $normalized['modeSwitch'],
-                'outline' => $normalized['outline'],
-                'counter' => $normalized['counter'],
-                'emoji' => $normalized['emoji'],
-                'localCache' => $normalized['localCache'],
-                'followTheme' => $normalized['followTheme'],
-                'hljs' => $normalized['hljs']
-            ])),
-            'lang' => $normalized['lang'],
-            'icon' => $normalized['icon'],
-            'editorHeight' => (string) $normalized['editorHeight'],
-            'fullStrategy' => $normalized['fullStrategy'],
-            'toolbar' => $normalized['toolbar']
-        ];
+        $settings = self::toStoredSettings($settings);
 
         \Widget\Plugins\Edit::configPlugin(self::NAME, $settings);
         self::clearConfigCache();
@@ -215,24 +196,12 @@ class VditorRenew_Plugin implements PluginInterface
     {
         Pref::sync(
             self::NAME,
-            self::normalize(self::defaults()),
+            self::defaults(),
             static fn(array $settings): array => self::normalize($settings),
             static function (string $scope, Throwable $e): void {
                 self::reportException('ensureConfigStored.' . $scope, $e);
             },
-            static function (array $merged): array {
-                return [
-                'enabled' => (string) $merged['enabled'],
-                'mode' => (string) $merged['mode'],
-                'legacy' => (string) $merged['legacy'],
-                'features' => (array) $merged['features'],
-                'lang' => (string) $merged['lang'],
-                'icon' => (string) $merged['icon'],
-                'editorHeight' => (string) $merged['editorHeight'],
-                'fullStrategy' => (string) $merged['fullStrategy'],
-                'toolbar' => (string) $merged['toolbar']
-                ];
-            }
+            static fn(array $merged): array => self::toStoredSettings($merged)
         );
     }
 
@@ -327,6 +296,31 @@ class VditorRenew_Plugin implements PluginInterface
             'editorHeight' => max(420, min(1200, (int) ($settings['editorHeight'] ?? 520))),
             'fullStrategy' => $fullStrategy,
             'toolbar' => $toolbar
+        ];
+    }
+
+    private static function toStoredSettings(array $settings): array
+    {
+        $normalized = self::normalize(array_merge(self::defaults(), $settings));
+
+        return [
+            'enabled' => (string) ($normalized['enabled'] ? '1' : '0'),
+            'mode' => $normalized['mode'],
+            'legacy' => $normalized['legacy'],
+            'features' => array_keys(array_filter([
+                'modeSwitch' => $normalized['modeSwitch'],
+                'outline' => $normalized['outline'],
+                'counter' => $normalized['counter'],
+                'emoji' => $normalized['emoji'],
+                'localCache' => $normalized['localCache'],
+                'followTheme' => $normalized['followTheme'],
+                'hljs' => $normalized['hljs']
+            ])),
+            'lang' => $normalized['lang'],
+            'icon' => $normalized['icon'],
+            'editorHeight' => (string) $normalized['editorHeight'],
+            'fullStrategy' => $normalized['fullStrategy'],
+            'toolbar' => $normalized['toolbar']
         ];
     }
 

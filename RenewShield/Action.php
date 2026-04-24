@@ -80,9 +80,9 @@ class Action extends \Typecho\Widget
         $saved = Settings::loadFresh();
         $issues = Access::issues($saved);
         if ($issues === []) {
-            Notice::alloc()->set($applyProfile ? '已应用推荐预设并保存配置' : '配置已保存', 'success');
+            Notice::alloc()->set($applyProfile ? '已应用预设方案并保存配置' : '配置已保存', 'success');
         } else {
-            $prefix = $applyProfile ? '已应用推荐预设并保存配置' : '配置已保存';
+            $prefix = $applyProfile ? '已应用预设方案并保存配置' : '配置已保存';
             Notice::alloc()->set($prefix . '，但访问规则中仍有问题：' . implode('；', array_slice($issues, 0, 2)), 'notice');
         }
 

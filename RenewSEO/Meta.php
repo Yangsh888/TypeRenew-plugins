@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace TypechoPlugin\RenewSEO;
 
 use Typecho\Router;
+use Utils\Helper;
 
 if (!defined('__TYPECHO_ROOT_DIR__')) {
     exit;
@@ -13,7 +14,6 @@ class Meta
 {
     public static function archive($archive): void
     {
-        Files::syncIfNeeded('archive');
         $settings = Settings::load();
         if (($settings['enabled'] ?? '1') !== '1') {
             return;
@@ -146,11 +146,6 @@ class Meta
     }
 
     public static function fields($item): void
-    {
-        self::renderFields($item);
-    }
-
-    private static function renderFields($item): void
     {
         $title = self::field($item, 'seo_title');
         $desc = self::field($item, 'seo_desc');
@@ -509,7 +504,7 @@ class Meta
 
     private static function websiteSchema(): array
     {
-        $target = Router::url('search', ['keywords' => '{search_term_string}'], (string) Settings::options()->index);
+        $target = Router::url('search', ['keywords' => '{search_term_string}'], (string) Helper::options()->index);
         if ($target === '#') {
             return [];
         }
@@ -621,12 +616,12 @@ class Meta
             $description = self::summary($archive);
         }
         if ($description === '' && !$archive->is('error404')) {
-            $description = trim((string) (Settings::options()->description ?? ''));
+            $description = trim((string) (Helper::options()->description ?? ''));
         }
 
         $keywords = self::archiveKeywords($archive);
         if ($keywords === '') {
-            $keywords = trim((string) (Settings::options()->keywords ?? ''));
+            $keywords = trim((string) (Helper::options()->keywords ?? ''));
         }
 
         $canonical = ($settings['canonicalEnable'] ?? '1') === '1' ? self::canonical($archive, $settings) : '';

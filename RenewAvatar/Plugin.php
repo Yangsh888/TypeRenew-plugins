@@ -76,7 +76,7 @@ class RenewAvatar_Plugin implements PluginInterface
             null,
             (string) $settings['customMirror'],
             _t('自定义镜像'),
-            _t('仅支持 https:// 开头，格式建议 https://xxx/avatar')
+            _t('仅支持 https:// 开头，例如 https://example.com/avatar')
         );
         $customMirror->input->setAttribute('class', 'w-100 mono');
         $form->addInput($customMirror);
@@ -142,11 +142,9 @@ class RenewAvatar_Plugin implements PluginInterface
     public static function render($size, $rating, $default, $comments): void
     {
         $settings = self::getSettings();
-        if (empty($settings['enabled'])) {
-            $url = Common::gravatarUrl((string) ($comments->mail ?? ''), (int) $size, (string) $rating, $default, $comments->request->isSecure());
-        } else {
-            $url = self::avatarUrl((string) ($comments->mail ?? ''), (int) $size, (string) $rating, $default, (bool) $comments->request->isSecure(), $settings);
-        }
+        $url = empty($settings['enabled'])
+            ? Common::gravatarUrl((string) ($comments->mail ?? ''), (int) $size, (string) $rating, $default, $comments->request->isSecure())
+            : self::avatarUrl((string) ($comments->mail ?? ''), (int) $size, (string) $rating, $default, $settings);
         $author = htmlspecialchars((string) ($comments->author ?? ''), ENT_QUOTES, 'UTF-8');
         echo '<img class="avatar" loading="lazy" src="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '" alt="' . $author . '" width="' . (int) $size . '" height="' . (int) $size . '" />';
     }
@@ -184,7 +182,7 @@ class RenewAvatar_Plugin implements PluginInterface
         }
     }
 
-    private static function avatarUrl(string $mail, int $size, string $rating, ?string $default, bool $isSecure, array $settings): string
+    private static function avatarUrl(string $mail, int $size, string $rating, ?string $default, array $settings): string
     {
         $size = max(16, min(512, $size));
         $rating = $rating !== '' ? $rating : 'G';
@@ -192,7 +190,7 @@ class RenewAvatar_Plugin implements PluginInterface
         $defaultValue = $default !== null ? (string) $default : $defaultAvatar;
         $normalized = self::normalizeMail($mail);
         if ($normalized === '') {
-            return self::gravatarWithHash('', $size, $rating, $defaultValue, $isSecure, $settings);
+            return self::gravatarWithHash('', $size, $rating, $defaultValue, $settings);
         }
 
         if (!empty($settings['enableQQ']) && ($settings['priority'] ?? 'qq') === 'qq') {
@@ -203,10 +201,10 @@ class RenewAvatar_Plugin implements PluginInterface
         }
 
         $hash = md5($normalized);
-        return self::gravatarWithHash($hash, $size, $rating, $defaultValue, $isSecure, $settings);
+        return self::gravatarWithHash($hash, $size, $rating, $defaultValue, $settings);
     }
 
-    private static function gravatarWithHash(string $hash, int $size, string $rating, string $default, bool $isSecure, array $settings): string
+    private static function gravatarWithHash(string $hash, int $size, string $rating, string $default, array $settings): string
     {
         $prefix = self::mirrorPrefix($settings);
         $query = http_build_query([
@@ -379,7 +377,7 @@ class RenewAvatar_Plugin implements PluginInterface
         return [
             'loli' => 'Gravatar loli 镜像',
             'qiniu' => '七牛镜像',
-            'cravatar' => 'Cravatar 镜像（推荐）',
+            'cravatar' => 'Cravatar 镜像',
             'webpse' => 'Webp.se 镜像',
             'weavatar' => 'WeAvatar 镜像',
             'sepcc' => 'Sep.cc 镜像',

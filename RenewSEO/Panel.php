@@ -64,4 +64,5 @@ $freqOptions = ['always', 'hourly', 'daily', 'weekly', 'monthly', 'yearly', 'nev
         <button type="submit" form="renewseo-main-form" class="btn primary">保存全部配置</button>
     </div>
 </div>
+<script src="<?php $options->adminStaticUrl('js', 'tr-tabs.js'); ?>"></script>
 <script src="<?php echo Text::e(Settings::assetUrl('assets/panel.js')); ?>"></script>

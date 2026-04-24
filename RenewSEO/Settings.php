@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace TypechoPlugin\RenewSEO;
 
-use Typecho\Cache;
 use Typecho\Common;
 use Typecho\Plugin\Exception as PluginException;
 use Utils\Helper;
@@ -249,16 +248,6 @@ class Settings
         Pref::forget(self::$runtime, self::CACHE_KEY, [self::class, 'report']);
     }
 
-    public static function options()
-    {
-        return Helper::options();
-    }
-
-    public static function cache(): Cache
-    {
-        return Cache::getInstance();
-    }
-
     public static function panelUrl(): string
     {
         return Helper::url(self::NAME . '/Panel.php');
@@ -266,7 +255,7 @@ class Settings
 
     public static function assetUrl(string $path): string
     {
-        $base = (string) (self::options()->pluginUrl ?? '');
+        $base = (string) (Helper::options()->pluginUrl ?? '');
         if ($base === '') {
             $base = Common::url('usr/plugins/', self::siteUrl());
         }
@@ -290,12 +279,12 @@ class Settings
             return \Widget\Security::alloc()->getIndex($path);
         }
 
-        return Common::url($path, (string) self::options()->index);
+        return Common::url($path, (string) Helper::options()->index);
     }
 
     public static function siteUrl(): string
     {
-        return rtrim((string) self::options()->siteUrl, '/') . '/';
+        return rtrim((string) Helper::options()->siteUrl, '/') . '/';
     }
 
     public static function siteHost(): string
@@ -310,7 +299,7 @@ class Settings
 
     public static function siteName(): string
     {
-        return (string) (self::options()->title ?? 'TypeRenew');
+        return (string) (Helper::options()->title ?? 'TypeRenew');
     }
 
     public static function rootPath(string $relative = ''): string
@@ -368,7 +357,7 @@ class Settings
     {
         try {
             return (array) Helper::options()->plugin(self::NAME)->toArray();
-        } catch (PluginException $e) {
+        } catch (PluginException) {
             return [];
         } catch (\Throwable $e) {
             self::report($scope, $e);

@@ -46,7 +46,7 @@ $tabLabels = [
             <div class="tr-panel-head">
                 <div class="tr-panel-heading">
                     <h2 class="tr-panel-title">安全中心</h2>
-                    <p class="tr-panel-desc">面向新手站长与轻量站点的基础防护插件，优先保证低误报、可观察和易回退。</p>
+                    <p class="tr-panel-desc">用于配置请求防护、挑战限频、访问控制与日志查看。</p>
                 </div>
                 <div class="tr-panel-pills">
                     <span class="tr-pill<?php echo $settings['enabled'] === '1' ? ' tr-pill-accent' : ''; ?>">插件<?php echo $settings['enabled'] === '1' ? '已启用' : '已停用'; ?></span>
@@ -70,4 +70,5 @@ $tabLabels = [
         <?php require __DIR__ . '/view/logs.php'; ?>
     </div>
 </div>
+<script src="<?php $options->adminStaticUrl('js', 'tr-tabs.js'); ?>"></script>
 <script src="<?php echo Text::e(Settings::assetUrl('assets/panel.js')); ?>"></script>

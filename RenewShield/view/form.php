@@ -16,7 +16,7 @@ $accessSummary = \TypechoPlugin\RenewShield\Access::summary($settings);
         <div class="shield-card">
             <div class="shield-card-header">
                 <h3 class="shield-card-title">运行概况</h3>
-                <p class="shield-card-desc">控制插件启用状态、推荐预设和整体策略。预设只有在点击“使用当前推荐预设”时才会覆盖对应策略值。</p>
+                <p class="shield-card-desc">用于设置插件启用状态、预设方案和整体处理策略。点击按钮后，会按当前选中的预设保存相关策略值。</p>
             </div>
             <div class="shield-list">
                 <div class="shield-list-item">
@@ -34,7 +34,7 @@ $accessSummary = \TypechoPlugin\RenewShield\Access::summary($settings);
                 <div class="shield-block-item">
                     <div class="shield-matrix">
                         <label class="shield-field">
-                            <span>推荐预设</span>
+                            <span>预设方案</span>
                             <select name="profile" class="shield-input">
                                 <?php foreach ($profiles as $value => $label): ?>
                                     <option value="<?php echo Text::e($value); ?>"<?php echo $settings['profile'] === $value ? ' selected' : ''; ?>><?php echo Text::e($label); ?></option>
@@ -61,23 +61,23 @@ $accessSummary = \TypechoPlugin\RenewShield\Access::summary($settings);
                     <div class="shield-note-grid">
                         <article class="shield-note">
                             <strong>保守模式</strong>
-                            <p>优先降低误判，适合首次接入、共享主机或站点位于复杂代理链路之后的环境。</p>
+                            <p>优先保证正常访问，并采用较温和的处理方式。</p>
                         </article>
                         <article class="shield-note">
                             <strong>平衡模式</strong>
-                            <p>在可用性和基础防护之间取中间值，适合作为绝大多数轻量站点的默认方案。</p>
+                            <p>在访问体验与基础防护之间保持均衡。</p>
                         </article>
                         <article class="shield-note">
                             <strong>严格模式</strong>
-                            <p>提升风险判断与挑战强度，适合已知扫描较多、日志稳定后再启用。</p>
+                            <p>提高风险处理强度，适用于需要更严格限制的场景。</p>
                         </article>
                     </div>
                     <div class="shield-profile-bar">
                         <div class="shield-profile-copy">
-                            <strong>推荐预设</strong>
-                            <p>该按钮会直接套用上方预设并保存相关策略值；如需保留当前手动修改，请使用页面底部的“保存当前配置”。</p>
+                            <strong>预设方案</strong>
+                            <p>点击按钮后，会按当前选中的预设保存相关策略值；如需保留当前手动修改，请使用页面底部的“保存当前配置”。</p>
                         </div>
-                        <button type="button" class="btn" data-shield-apply-profile="1">使用当前推荐预设</button>
+                        <button type="button" class="btn" data-shield-apply-profile="1">使用当前预设并保存</button>
                     </div>
                 </div>
             </div>
@@ -142,15 +142,15 @@ $accessSummary = \TypechoPlugin\RenewShield\Access::summary($settings);
         <div class="shield-card">
             <div class="shield-card-header">
                 <h3 class="shield-card-title">浏览器一致性识别</h3>
-                <p class="shield-card-desc">这些项目属于轻量启发式检测，用于识别“声称是浏览器但行为不完整”的请求，建议按日志观察后逐步收紧。</p>
+                <p class="shield-card-desc">用于识别声明为浏览器但请求特征异常的访问。</p>
             </div>
             <div class="shield-list">
                 <?php foreach ([
                     ['browserCheck', '浏览器最低版本要求', '声称是浏览器却使用过低版本时按风险策略处理。'],
                     ['secFetchCheck', 'Sec-Fetch 校验', '对声称是浏览器但缺少 Sec-Fetch 头的页面请求追加风险判断。'],
                     ['headerCompleteness', '浏览器基础头完整度', '检查 Accept、Accept-Language、Accept-Encoding 三项基础头。'],
-                    ['httpVersionCheck', 'HTTP/1.x 风险识别', '实验性识别，仅作为轻量风险信号，不建议在复杂代理环境下重度依赖。'],
-                    ['blockProxy', '代理头识别', '检测未受信来源携带的代理头，适合未接 CDN 的轻量站点。'],
+                    ['httpVersionCheck', 'HTTP/1.x 风险识别', '将异常的 HTTP/1.x 请求作为附加风险信号参与判断。'],
+                    ['blockProxy', '代理头识别', '检测未受信来源携带的代理头信息。'],
                 ] as [$key, $title, $desc]): ?>
                     <div class="shield-list-item">
                         <div class="shield-list-item-meta">
@@ -198,7 +198,7 @@ $accessSummary = \TypechoPlugin\RenewShield\Access::summary($settings);
                 <div class="shield-block-item">
                     <div class="shield-list-item-meta">
                         <h4 class="shield-list-item-title">受信代理与 XML-RPC 白名单</h4>
-                        <p class="shield-list-item-desc">只有当访问来源确实是你的 CDN、反向代理或固定客户端时，才建议填写。</p>
+                        <p class="shield-list-item-desc">填写受信代理或固定客户端的 IP / CIDR；留空表示不额外放行。</p>
                     </div>
                     <div class="shield-grid-2 shield-grid-pad">
                         <div class="shield-stack">
@@ -221,7 +221,7 @@ $accessSummary = \TypechoPlugin\RenewShield\Access::summary($settings);
         <div class="shield-card">
             <div class="shield-card-header">
                 <h3 class="shield-card-title">名单与陷阱</h3>
-                <p class="shield-card-desc">白名单优先级最高；陷阱路径命中后会直接记为扫描行为并触发封禁。</p>
+                <p class="shield-card-desc">白名单优先处理；命中陷阱路径的请求会按扫描行为记录并处理。</p>
             </div>
             <div class="shield-list">
                 <div class="shield-grid-2 shield-grid-pad">
@@ -265,13 +265,13 @@ $accessSummary = \TypechoPlugin\RenewShield\Access::summary($settings);
         <div class="shield-card">
             <div class="shield-card-header">
                 <h3 class="shield-card-title">挑战与限频</h3>
-                <p class="shield-card-desc">用于处理 CC、登录爆破、评论刷屏和疑似机器人访问。普通页面默认更偏向轻验证，登录与 XML-RPC 更偏向直接阻断。</p>
+                <p class="shield-card-desc">用于配置普通页面、登录、评论和 XML-RPC 请求的限频与挑战规则。</p>
             </div>
             <div class="shield-list">
                 <div class="shield-block-item">
                     <div class="shield-list-item-meta">
                         <h4 class="shield-list-item-title">限频阈值</h4>
-                        <p class="shield-list-item-desc">单位分别为秒和次数，建议从平衡默认值起步，再结合日志做微调。</p>
+                        <p class="shield-list-item-desc">单位分别为秒和次数，用于控制各类请求的触发阈值。</p>
                     </div>
                     <div class="shield-matrix">
                         <label class="shield-field">
@@ -330,7 +330,7 @@ $accessSummary = \TypechoPlugin\RenewShield\Access::summary($settings);
         <div class="shield-card">
             <div class="shield-card-header">
                 <h3 class="shield-card-title">评论与上传保护</h3>
-                <p class="shield-card-desc">这里是最容易被脚本滥用的两类入口，建议保持最基本的时间、链接和内容检测。</p>
+                <p class="shield-card-desc">用于配置评论提交和上传请求的基础保护规则。</p>
             </div>
             <div class="shield-list">
                 <?php foreach ([

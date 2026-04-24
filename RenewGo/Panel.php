@@ -42,7 +42,7 @@ $urlImport = RenewGo_Plugin::apiUrl('import');
             <div class="tr-panel-head">
                 <div class="tr-panel-heading">
                     <h2 class="tr-panel-title"><?php _e('RenewGo 外链安全中心'); ?></h2>
-                    <p class="tr-panel-desc"><?php _e('统一管理外链改写、规则校验、白名单维护与跳转日志，保持和 SEO 中心一致的后台体验。'); ?></p>
+                    <p class="tr-panel-desc"><?php _e('统一管理外链改写、规则校验、白名单维护与跳转日志。'); ?></p>
                 </div>
                 <div class="tr-panel-pills">
                     <span class="tr-pill"><?php echo htmlspecialchars((string) $settings['mode'], ENT_QUOTES, 'UTF-8'); ?></span>
@@ -98,7 +98,7 @@ $urlImport = RenewGo_Plugin::apiUrl('import');
             </div>
         </div>
         <div class="tr-card-b">
-            <p class="tr-panel-note"><?php _e('每行一条规则，可直接编辑后导入；适合快速维护白名单和做跨站迁移。'); ?></p>
+            <p class="tr-panel-note"><?php _e('每行一条规则，可直接编辑后导入，也可先导出备份现有内容。'); ?></p>
             <textarea id="renewgoRules" class="tr-panel-input renewgo-rules" spellcheck="false"><?php echo htmlspecialchars((string) ($settings['whitelist'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
         </div>
     </section>
