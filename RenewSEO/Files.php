@@ -724,21 +724,13 @@ class Files
                 ),
             ], 0, '{}');
 
-            $exists = $db->fetchRow(
-                $db->select('name')
-                    ->from('table.options')
+            $affected = $db->query(
+                $db->update('table.options')->rows(['value' => $value])
                     ->where('name = ?', self::STATE_OPTION)
                     ->where('user = ?', 0)
-                    ->limit(1)
             );
 
-            if ($exists) {
-                $db->query(
-                    $db->update('table.options')->rows(['value' => $value])
-                        ->where('name = ?', self::STATE_OPTION)
-                        ->where('user = ?', 0)
-                );
-            } else {
+            if ($affected === 0) {
                 $db->query(
                     $db->insert('table.options')->rows([
                         'name' => self::STATE_OPTION,
