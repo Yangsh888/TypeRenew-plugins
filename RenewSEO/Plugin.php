@@ -228,6 +228,7 @@ class Plugin implements PluginInterface
         Hook::factory('Widget\\Archive')->headerOptions = [Meta::class, 'headerOptions'];
         Hook::factory('Widget\\Archive')->header = [Meta::class, 'header'];
         Hook::factory('admin/footer.php')->end = [Files::class, 'syncIfNeeded'];
+        Hook::factory('index.php')->end = [Files::class, 'syncIfNeeded'];
 
         Hook::factory('Widget\\Base\\Contents')->contentEx = [Meta::class, 'contentEx'];
 

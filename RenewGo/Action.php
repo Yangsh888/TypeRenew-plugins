@@ -193,11 +193,15 @@ class RenewGo_Action extends Typecho_Widget
         if (strlen($body) > self::MAX_JSON_SIZE) {
             $this->jsonError(_t('请求体过大'), 413, 'payload_too_large');
         }
-        $json = json_decode($body, true);
-        if (!is_array($json)) {
+        if (trim($body) === '') {
             return [];
         }
-        return $json;
+        try {
+            $json = json_decode($body, true, 32, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
+            $this->jsonError(_t('请求 JSON 无效'), 400, 'invalid_json');
+        }
+        return is_array($json) ? $json : [];
     }
 
     private function requirePost(): void

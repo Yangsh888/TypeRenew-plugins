@@ -18,6 +18,7 @@ class Guard
     private const PASS_COOKIE = '__renewshield_pass';
     private const COMMENT_COOKIE = '__renewshield_comment';
     private const FIELD_HP = 'renewshield_hp';
+    private const FIELD_COMMENT_TOKEN = 'renewshield_ctx';
     private const WAF_QUERY_BYTES = 8192;
     private const WAF_BODY_BYTES = 16384;
     private const UPLOAD_SAMPLE_BYTES = 8192;
@@ -176,13 +177,17 @@ class Guard
         }
 
         $minSeconds = (int) ($settings['commentMinSeconds'] ?? 4);
+        $token = '';
+        $tokenField = self::FIELD_COMMENT_TOKEN;
         if ($minSeconds > 0) {
             $context = Context::fromRequest(Request::getInstance());
-            Cookie::set(self::COMMENT_COOKIE, self::makeToken('comment', $context, self::COMMENT_TTL, []), time() + self::COMMENT_TTL);
+            $token = self::makeToken('comment', $context, self::COMMENT_TTL, []);
+            Cookie::set(self::COMMENT_COOKIE, $token, time() + self::COMMENT_TTL);
             State::set(self::commentViewKey($context, (int) ($archive->cid ?? 0)), time(), self::COMMENT_TTL);
         }
 
         $hp = self::FIELD_HP;
+        $tokenJson = Common::jsonEncode($token, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES, '""');
         echo <<<HTML
 <script>
 (function () {
@@ -200,6 +205,13 @@ class Guard
         hp.tabIndex = -1;
 
         form.appendChild(hp);
+        if ({$tokenJson} !== '') {
+            var ctx = document.createElement('input');
+            ctx.type = 'hidden';
+            ctx.name = '{$tokenField}';
+            ctx.value = {$tokenJson};
+            form.appendChild(ctx);
+        }
     }
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -231,12 +243,18 @@ HTML;
 
         $minSeconds = (int) ($settings['commentMinSeconds'] ?? 4);
         if ($minSeconds > 0) {
-            $token = (string) Cookie::get(self::COMMENT_COOKIE, '');
+            $token = (string) $request->get(self::FIELD_COMMENT_TOKEN, '');
+            if ($token === '') {
+                $token = (string) Cookie::get(self::COMMENT_COOKIE, '');
+            }
             $issuedAt = 0;
             if ($token !== '') {
                 $payload = self::readToken($token, 'comment', $context);
+                if ($payload === null) {
+                    self::denyComment('comment.context', '评论请求缺少有效页面上下文，请刷新页面后重试');
+                }
                 $issuedAt = (int) ($payload['iat'] ?? 0);
-                if ($payload === null || $issuedAt <= 0) {
+                if ($issuedAt <= 0) {
                     self::denyComment('comment.context', '评论请求缺少有效页面上下文，请刷新页面后重试');
                 }
             } else {
@@ -342,7 +360,7 @@ HTML;
     public static function verifyChallengeToken(string $token): array
     {
         $context = Context::fromRequest();
-        $payload = self::readToken($token, 'challenge', $context);
+        $payload = self::readToken($token, 'challenge', $context, false);
         if ($payload === null) {
             Log::write('challenge', 'verify', 'block', 'challenge.invalid', 30, '挑战令牌无效或已过期');
             return ['ok' => false, 'message' => '验证令牌无效或已过期'];
@@ -361,7 +379,11 @@ HTML;
         }
         State::delete('challenge:' . $nonce);
 
-        Cookie::set(self::PASS_COOKIE, self::makeToken('pass', $context, self::PASS_TTL, []), time() + self::PASS_TTL);
+        Cookie::set(
+            self::PASS_COOKIE,
+            self::makeToken('pass', $context, self::PASS_TTL, ['ctx' => (string) ($payload['ctx'] ?? '')]),
+            time() + self::PASS_TTL
+        );
         Log::write('challenge', 'verify', 'allow', 'challenge.pass', 0, '挑战验证通过');
 
         return [
@@ -639,10 +661,16 @@ HTML;
 
     private static function makeToken(string $type, Context $context, int $ttl, array $extra): string
     {
+        $ctx = (string) ($extra['ctx'] ?? '');
+        if ($ctx === '') {
+            $ctx = self::contextFingerprint($context);
+        }
+        unset($extra['ctx']);
+
         $payload = array_merge($extra, [
             'type' => $type,
             'ip' => sha1($context->ip),
-            'ctx' => self::contextFingerprint($context),
+            'ctx' => $ctx,
             'iat' => time(),
             'exp' => time() + max(60, $ttl),
         ]);
@@ -653,7 +681,7 @@ HTML;
         return $body . '.' . $sign;
     }
 
-    private static function readToken(string $token, string $type, Context $context): ?array
+    private static function readToken(string $token, string $type, Context $context, bool $matchContext = true): ?array
     {
         $parts = explode('.', $token, 2);
         if (count($parts) !== 2) {
@@ -676,7 +704,11 @@ HTML;
             return null;
         }
 
-        if (($payload['ip'] ?? '') !== sha1($context->ip) || ($payload['ctx'] ?? '') !== self::contextFingerprint($context)) {
+        if (($payload['ip'] ?? '') !== sha1($context->ip)) {
+            return null;
+        }
+
+        if ($matchContext && ($payload['ctx'] ?? '') !== self::contextFingerprint($context)) {
             return null;
         }
 

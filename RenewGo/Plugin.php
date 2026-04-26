@@ -499,7 +499,10 @@ class RenewGo_Plugin implements PluginInterface
     public static function startBuffer(): void
     {
         $settings = self::getSettings();
-        if (!self::isEnabled($settings) || !self::isRewriteEnabled($settings, 'fallback')) {
+        if (!self::isEnabled($settings)) {
+            return;
+        }
+        if (!self::isRewriteEnabled($settings, 'fallback') && !self::shouldInjectClientScript($settings)) {
             return;
         }
         if (self::shouldSkipFallback()) {
@@ -509,7 +512,9 @@ class RenewGo_Plugin implements PluginInterface
             return;
         }
         self::$bufferLevel = ob_get_level();
-        ob_start();
+        ob_start(static function (string $content): string {
+            return self::filterBufferedOutput($content);
+        });
         self::$buffering = true;
     }
 
@@ -532,19 +537,24 @@ class RenewGo_Plugin implements PluginInterface
             self::$bufferLevel = 0;
             return;
         }
-        $content = (string) ob_get_contents();
-        ob_end_clean();
+        ob_end_flush();
         self::$buffering = false;
         self::$bufferLevel = 0;
+    }
+
+    private static function filterBufferedOutput(string $content): string
+    {
+        $settings = self::getSettings();
         if (!self::looksLikeHtmlDocument($content)) {
-            echo $content;
-            return;
+            return $content;
         }
+
         $content = self::rewriteHtml($content, 'fallback', $settings);
         if (self::shouldInjectClientScript($settings)) {
             $content = self::injectClientScript($content, $settings);
         }
-        echo $content;
+
+        return $content;
     }
 
     public static function rewriteHtml(string $html, string $scope, ?array $settings = null): string
@@ -564,10 +574,21 @@ class RenewGo_Plugin implements PluginInterface
             return $html;
         }
 
+        $protected = [];
+        if ($scope === 'fallback') {
+            $html = self::protectHtmlBlocks($html, $protected);
+        }
+
         $pattern = '/<a\b[^>]*>/i';
-        return (string) preg_replace_callback($pattern, function (array $matches) use ($settings) {
+        $rewritten = (string) preg_replace_callback($pattern, function (array $matches) use ($settings) {
             return self::rewriteAnchorTag($matches[0], $settings);
         }, $html);
+
+        if ($protected !== []) {
+            $rewritten = self::restoreHtmlBlocks($rewritten, $protected);
+        }
+
+        return $rewritten;
     }
 
     public static function rewriteAnchorTag(string $tag, array $settings): string
@@ -1080,6 +1101,28 @@ class RenewGo_Plugin implements PluginInterface
         return stripos($trimmed, '<body') !== false;
     }
 
+    private static function protectHtmlBlocks(string $html, array &$protected): string
+    {
+        return (string) preg_replace_callback(
+            '/<(script|style|pre|code|textarea)\b[\s\S]*?<\/\1>/i',
+            static function (array $matches) use (&$protected): string {
+                $token = '__RENEWGO_BLOCK_' . count($protected) . '__';
+                $protected[$token] = $matches[0];
+                return $token;
+            },
+            $html
+        );
+    }
+
+    private static function restoreHtmlBlocks(string $html, array $protected): string
+    {
+        if ($protected === []) {
+            return $html;
+        }
+
+        return strtr($html, $protected);
+    }
+
     private static function buildClientScriptTag(array $settings): string
     {
         $rules = self::parseRules((string) ($settings['whitelist'] ?? ''));
@@ -1169,6 +1212,6 @@ class RenewGo_Plugin implements PluginInterface
 
     private static function encodeOptionValue(array $value): string
     {
-        return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        return Common::jsonEncode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES, '{}');
     }
 }

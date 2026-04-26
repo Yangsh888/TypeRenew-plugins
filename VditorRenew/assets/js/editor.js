@@ -95,13 +95,17 @@
         }
         const baseScope = String(cfg.draftScope || 'vditorrenew:post');
         const scope = baseScope;
-        draftCacheSessionKey = 'trVditorDraft:' + scope;
-        let seed = draftSeedStorage ? draftSeedStorage.getItem(draftCacheSessionKey) : '';
+        const explicitSeed = String(cfg.draftInstance || '');
+        draftCacheSessionKey = 'trVditorDraft:' + scope + ':' + explicitSeed;
+        let seed = explicitSeed;
+        if (!seed && draftSeedStorage) {
+            seed = draftSeedStorage.getItem(draftCacheSessionKey) || '';
+        }
         if (!seed) {
             seed = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
-            if (draftSeedStorage) {
-                draftSeedStorage.setItem(draftCacheSessionKey, seed);
-            }
+        }
+        if (draftSeedStorage) {
+            draftSeedStorage.setItem(draftCacheSessionKey, seed);
         }
         cacheId = scope + ':' + seed;
     };

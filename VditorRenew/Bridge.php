@@ -34,7 +34,9 @@ class VditorRenew_Bridge
             return;
         }
 
-        if (!$markdownEnabled && !$isMarkdown) {
+        $legacy = $isLegacy ? $settings['legacy'] : 'raw';
+        $forceMarkdown = !$isLegacy || $legacy === 'convert';
+        if (!$markdownEnabled && !$isMarkdown && !$forceMarkdown) {
             self::fallback($content, $type);
             return;
         }
@@ -42,8 +44,6 @@ class VditorRenew_Bridge
         $cdn = VditorRenew_Plugin::assetUrl('assets/vditor');
 
         $toolbar = self::toolbar($settings);
-        $legacy = $isLegacy ? $settings['legacy'] : 'raw';
-        $forceMarkdown = !$isLegacy || $legacy === 'convert';
         $allowMarkdown = $markdownEnabled || $isMarkdown || $forceMarkdown;
 
         $user = \Widget\User::alloc();
@@ -77,18 +77,23 @@ class VditorRenew_Bridge
             'forceMarkdown' => $forceMarkdown,
             'lastModified' => $lastModified,
             'draftScope' => 'vditorrenew:' . $type,
+            'draftInstance' => $isNew ? bin2hex(random_bytes(8)) : '',
             'cacheId' => 'vditorrenew:' . $type . ':' . ($isNew ? 'new' : ($content->cid ?? 0)),
             'toolbar' => $toolbar,
             'cdn' => $cdn
         ];
 
-        $configJson = json_encode($config, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $configJson = \Typecho\Common::jsonEncode(
+            $config,
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT,
+            '{}'
+        );
         ?>
 <link rel="stylesheet" href="<?php echo VditorRenew_Plugin::assetUrl('assets/vditor/dist/index.css'); ?>">
 <link rel="stylesheet" href="<?php echo VditorRenew_Plugin::assetUrl('assets/css/editor.css'); ?>">
 <script src="<?php echo VditorRenew_Plugin::assetUrl('assets/vditor/dist/index.min.js'); ?>"></script>
 <script>
-window.VditorRenewConfig = <?php echo $configJson ?: '{}'; ?>;
+window.VditorRenewConfig = <?php echo $configJson; ?>;
 </script>
 <script src="<?php echo VditorRenew_Plugin::assetUrl('assets/js/editor.js'); ?>"></script>
         <?php

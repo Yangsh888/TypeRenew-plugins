@@ -227,11 +227,29 @@ class RenewAvatar_Plugin implements PluginInterface
         
         $cached = self::cacheGet($key);
         if ($cached !== null) {
-            return $cached === self::FAIL_MARK ? '' : $cached;
+            if ($cached === self::FAIL_MARK) {
+                self::cacheDelete($key);
+            } else {
+                return $cached;
+            }
         }
 
+        $failCount = 0;
+        $retryAt = 0;
         $failCached = self::cacheGet($failKey);
-        $failCount = $failCached !== null ? (int) $failCached : 0;
+        if ($failCached !== null) {
+            $decoded = json_decode($failCached, true);
+            if (is_array($decoded)) {
+                $failCount = max(0, (int) ($decoded['count'] ?? 0));
+                $retryAt = max(0, (int) ($decoded['retryAt'] ?? 0));
+            } elseif (ctype_digit($failCached)) {
+                $failCount = (int) $failCached;
+            }
+        }
+
+        if ($retryAt > time()) {
+            return '';
+        }
 
         $url = self::fetchQqUrl($uin, (int) ($settings['requestTimeout'] ?? 3));
         if ($url !== '') {
@@ -242,8 +260,11 @@ class RenewAvatar_Plugin implements PluginInterface
 
         $nextFailCount = $failCount + 1;
         $failTtl = self::getProgressiveFailTtl($nextFailCount);
-        self::cacheSet($key, self::FAIL_MARK, $failTtl);
-        self::cacheSet($failKey, (string) $nextFailCount, $failTtl);
+        self::cacheDelete($key);
+        self::cacheSet($failKey, json_encode([
+            'count' => $nextFailCount,
+            'retryAt' => time() + $failTtl,
+        ], JSON_UNESCAPED_SLASHES), max($failTtl, 1800));
         return '';
     }
 
