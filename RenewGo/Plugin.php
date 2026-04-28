@@ -218,6 +218,13 @@ class RenewGo_Plugin implements PluginInterface
 
     public static function configHandle(array &$settings, bool $isInit)
     {
+        if (!array_key_exists('rewrite', $settings)) {
+            $settings['rewrite'] = [];
+        }
+        if (!array_key_exists('rel', $settings)) {
+            $settings['rel'] = [];
+        }
+
         $settings = self::normalize($settings);
         \Widget\Plugins\Edit::configPlugin(self::NAME, $settings);
         self::clearConfigCache();
@@ -807,8 +814,8 @@ class RenewGo_Plugin implements PluginInterface
                 'ip' => $ip,
                 'action' => substr($action, 0, 24),
                 'result' => substr($result, 0, 16),
-                'target' => mb_substr($targetValue, 0, 512),
-                'referer' => mb_substr($refererValue, 0, 512),
+                'target' => self::textCut($targetValue, 512),
+                'referer' => self::textCut($refererValue, 512),
                 'created_at' => time()
             ]));
         } catch (Throwable $e) {
@@ -884,18 +891,15 @@ class RenewGo_Plugin implements PluginInterface
         }
 
         $rewriteMap = ['content', 'comments', 'author', 'client', 'fallback'];
-        $rewrite = array_values(array_intersect($rewriteMap, (array) ($settings['rewrite'] ?? [])));
-        if (empty($rewrite)) {
-            $rewrite = ['content', 'comments', 'author'];
-        }
+        $rewrite = array_values(array_intersect(
+            $rewriteMap,
+            (array) ($settings['rewrite'] ?? self::defaults()['rewrite'])
+        ));
 
         $rel = array_values(array_intersect(
             ['nofollow', 'noopener', 'noreferrer'],
-            (array) ($settings['rel'] ?? [])
+            (array) ($settings['rel'] ?? self::defaults()['rel'])
         ));
-        if (empty($rel)) {
-            $rel = ['nofollow', 'noopener', 'noreferrer'];
-        }
 
         $logLevel = (string) ($settings['logLevel'] ?? 'basic');
         if (!in_array($logLevel, ['off', 'basic', 'full'], true)) {
@@ -916,7 +920,7 @@ class RenewGo_Plugin implements PluginInterface
             'rel' => $rel,
             'openInNewTab' => ((string) ($settings['openInNewTab'] ?? '1') === '1') ? '1' : '0',
             'directWhitelistOnly' => ((string) ($settings['directWhitelistOnly'] ?? '1') === '1') ? '1' : '0',
-            'pageTitle' => mb_substr($title, 0, 80),
+            'pageTitle' => self::textCut($title, 80),
             'staySeconds' => (string) max(0, min(15, (int) ($settings['staySeconds'] ?? 0))),
             'maxJumpPerHour' => (string) max(10, min(5000, (int) ($settings['maxJumpPerHour'] ?? 120))),
             'signWindow' => (string) max(60, min(1800, (int) ($settings['signWindow'] ?? 300))),
@@ -943,6 +947,26 @@ class RenewGo_Plugin implements PluginInterface
             $clean[] = $line;
         }
         return implode("\n", array_slice($clean, 0, 1000));
+    }
+
+    public static function textCut(string $value, int $max): string
+    {
+        if ($max <= 0 || $value === '') {
+            return $max <= 0 ? '' : $value;
+        }
+
+        if (function_exists('mb_substr')) {
+            return (string) mb_substr($value, 0, $max);
+        }
+
+        if (function_exists('iconv_substr')) {
+            $result = iconv_substr($value, 0, $max, 'UTF-8');
+            if ($result !== false) {
+                return (string) $result;
+            }
+        }
+
+        return substr($value, 0, $max);
     }
 
     private static function createTables(): void

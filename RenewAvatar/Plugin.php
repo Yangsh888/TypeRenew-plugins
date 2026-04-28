@@ -25,7 +25,6 @@ class RenewAvatar_Plugin implements PluginInterface
 
     private const NAME = 'RenewAvatar';
     private const CACHE_KEY = 'renewavatar:settings:v1';
-    private const FAIL_MARK = '__FAIL__';
     private static ?array $runtimeSettings = null;
 
     public static function activate()
@@ -227,11 +226,7 @@ class RenewAvatar_Plugin implements PluginInterface
         
         $cached = self::cacheGet($key);
         if ($cached !== null) {
-            if ($cached === self::FAIL_MARK) {
-                self::cacheDelete($key);
-            } else {
-                return $cached;
-            }
+            return $cached;
         }
 
         $failCount = 0;

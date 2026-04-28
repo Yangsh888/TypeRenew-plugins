@@ -91,6 +91,15 @@ class Push
     public static function process(array $task): array
     {
         $settings = Settings::load();
+        if (($settings['enabled'] ?? '1') !== '1') {
+            return [
+                'rebuild' => false,
+                'baidu' => null,
+                'indexnow' => null,
+                'bing' => null,
+            ];
+        }
+
         Log::maybeCleanup($settings);
 
         $task = [

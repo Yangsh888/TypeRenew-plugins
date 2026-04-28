@@ -92,7 +92,7 @@ class RenewGo_Action extends Typecho_Widget
         $title = (string) ($settings['pageTitle'] ?? _t('外链访问提示'));
         $staySeconds = (int) ($settings['staySeconds'] ?? 0);
         $host = (string) parse_url($url, PHP_URL_HOST);
-        $display = mb_strlen($url) > 120 ? mb_substr($url, 0, 117) . '...' : $url;
+        $display = RenewGo_Plugin::textCut($url, 120) !== $url ? RenewGo_Plugin::textCut($url, 117) . '...' : $url;
         $home = $this->siteUrl();
         $newTab = (string) ($settings['openInNewTab'] ?? '1') === '1';
         $template = __DIR__ . '/view/interstitial.php';
@@ -235,24 +235,12 @@ class RenewGo_Action extends Typecho_Widget
 
     private function siteUrl(): string
     {
-        $site = '';
-        if (isset($this->options) && is_object($this->options) && !empty($this->options->siteUrl)) {
-            $site = (string) $this->options->siteUrl;
-        }
-        if ($site === '') {
-            try {
-                $site = (string) \Utils\Helper::options()->siteUrl;
-            } catch (Throwable $e) {
-                $site = '';
-            }
-        }
+        $site = (string) \Utils\Helper::options()->siteUrl;
         if ($site === '') {
             $site = (string) $this->request->getUrlPrefix();
-            if ($site === '') {
-                $site = 'http://localhost';
-            }
         }
-        return rtrim($site, '/') . '/';
+
+        return rtrim($site !== '' ? $site : '/', '/') . '/';
     }
 
     private function resolveTarget(string $encoded): array

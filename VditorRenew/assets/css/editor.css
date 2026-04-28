@@ -59,8 +59,8 @@ body.tr-admin .tr-vditor-mode select {
     z-index: 30;
 }
 
-body.tr-admin.tr-page-write .tr-vditor-fullscreen .tr-vditor-host .vditor--fullscreen {
-    z-index: 1200;
+.tr-vditor-host .vditor-toolbar [data-type="fullscreen"].tr-fullscreen-active {
+    color: var(--tr-primary, #2563eb);
 }
 
 .tr-vditor-mask {
@@ -110,14 +110,6 @@ body.tr-admin.tr-page-write .tr-vditor-fullscreen .tr-vditor-host .vditor--fulls
     height: 34px;
     padding: 0 10px;
     border-radius: 10px;
-}
-
-.tr-vditor-dialog-opt {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px 14px;
-    align-items: center;
-    padding-top: 4px;
 }
 
 .tr-vditor-dialog-ft {

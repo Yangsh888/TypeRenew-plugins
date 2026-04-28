@@ -12,8 +12,6 @@ use TypechoPlugin\RenewShield\Text;
 
 $user->pass('administrator');
 $settings = Settings::loadFresh();
-$insights = Log::insights();
-$health = Health::inspect($settings);
 $filters = [
     'scope' => trim((string) $request->get('scope')),
     'decision' => trim((string) $request->get('decision')),
@@ -25,8 +23,22 @@ $tabs = Settings::tabs();
 if (!in_array($currentTab, $tabs, true)) {
     $currentTab = 'global';
 }
+$insights = [];
+$health = [];
 $page = max(1, (int) $request->get('page', 1));
-$logs = Log::search($filters, $page, (int) ($settings['panelSize'] ?? 10));
+$logs = [
+    'rows' => [],
+    'total' => 0,
+    'page' => $page,
+    'size' => (int) ($settings['panelSize'] ?? 10),
+];
+
+if ($currentTab === 'ops') {
+    $insights = Log::insights();
+    $health = Health::inspect($settings);
+    $logs = Log::search($filters, $page, (int) ($settings['panelSize'] ?? 10));
+}
+
 $saveUrl = Settings::actionUrl('save', true);
 $purgeUrl = Settings::actionUrl('purge_logs', true);
 $cleanupUrl = Settings::actionUrl('cleanup', true);

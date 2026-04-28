@@ -41,6 +41,7 @@ class Plugin implements PluginInterface
     public static function deactivate(): string
     {
         Guard::clearPass();
+        State::reset();
         Helper::removeRoute('renew_shield_action');
         Helper::removePanel(3, 'RenewShield/Panel.php');
         Settings::clear();

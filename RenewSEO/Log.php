@@ -73,12 +73,6 @@ class Log
             $path = self::normalizePath($fullUrl, (string) $request->getRequestUri());
             $hash = sha1(strtolower($path));
             $db = Db::get();
-            $row = $db->fetchRow(
-                $db->select('id', 'hits')
-                    ->from('table.renew_seo_404')
-                    ->where('path_hash = ?', $hash)
-                    ->limit(1)
-            );
 
             $now = time();
             $referer = ($settings['notFoundStoreReferer'] ?? '0') === '1'
@@ -88,36 +82,59 @@ class Log
             $ua = ($settings['notFoundStoreUa'] ?? '0') === '1'
                 ? self::cut((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), self::UA_LIMIT)
                 : '';
-
-            if ($row) {
-                $db->query(
-                    $db->update('table.renew_seo_404')->rows([
-                        'path' => self::cut($path, self::PATH_LIMIT),
-                        'full_url' => self::cut($fullUrl, self::URL_LIMIT),
-                        'referer' => $referer,
-                        'ip' => $ip,
-                        'ua' => $ua,
-                        'hits' => (int) ($row['hits'] ?? 0) + 1,
-                        'last_seen' => $now,
-                    ])->where('id = ?', (int) $row['id'])
-                );
-                return;
-            }
-
-            $db->query($db->insert('table.renew_seo_404')->rows([
-                'path_hash' => $hash,
+            $rows = [
                 'path' => self::cut($path, self::PATH_LIMIT),
                 'full_url' => self::cut($fullUrl, self::URL_LIMIT),
                 'referer' => $referer,
                 'ip' => $ip,
                 'ua' => $ua,
-                'hits' => 1,
-                'first_seen' => $now,
                 'last_seen' => $now,
-            ]));
+            ];
+            $row = self::find404Row($db, $hash);
+
+            if ($row) {
+                self::update404Row($db, $row, $rows);
+                return;
+            }
+
+            try {
+                $db->query($db->insert('table.renew_seo_404')->rows($rows + [
+                    'path_hash' => $hash,
+                    'hits' => 1,
+                    'first_seen' => $now,
+                ]));
+            } catch (\Throwable $e) {
+                $row = self::find404Row($db, $hash);
+                if ($row) {
+                    self::update404Row($db, $row, $rows);
+                    return;
+                }
+                throw $e;
+            }
         } catch (\Throwable $e) {
             self::write('404', 'record', 'error', '', $e->getMessage());
         }
+    }
+
+    private static function find404Row(Db $db, string $hash): ?array
+    {
+        $row = $db->fetchRow(
+            $db->select('id', 'hits')
+                ->from('table.renew_seo_404')
+                ->where('path_hash = ?', $hash)
+                ->limit(1)
+        );
+
+        return is_array($row) ? $row : null;
+    }
+
+    private static function update404Row(Db $db, array $row, array $rows): void
+    {
+        $db->query(
+            $db->update('table.renew_seo_404')->rows($rows + [
+                'hits' => (int) ($row['hits'] ?? 0) + 1,
+            ])->where('id = ?', (int) ($row['id'] ?? 0))
+        );
     }
 
     public static function maybeCleanup(array $settings): void

@@ -45,8 +45,6 @@ class VditorRenew_Bridge
 
         $toolbar = self::toolbar($settings);
         $allowMarkdown = $markdownEnabled || $isMarkdown || $forceMarkdown;
-
-        $user = \Widget\User::alloc();
         $isNew = empty($content->cid);
         
         $lastModified = 0;
@@ -101,14 +99,10 @@ window.VditorRenewConfig = <?php echo $configJson; ?>;
 
     private static function toolbar(array $settings): array
     {
-        $toolbar = ['emoji', 'headings', 'bold', 'italic', 'strike', '|', 'list', 'ordered-list', 'check', 'outdent', 'indent', '|', 'quote', 'line', 'code', 'inline-code', 'insert-before', 'insert-after', '|', 'link', 'table', '|', 'undo', 'redo', '|', 'edit-mode'];
+        $toolbar = ['emoji', 'headings', 'bold', 'italic', 'strike', '|', 'list', 'ordered-list', 'check', 'outdent', 'indent', '|', 'quote', 'line', 'code', 'inline-code', 'insert-before', 'insert-after', '|', 'link', 'table', '|', 'undo', 'redo', '|', 'edit-mode', 'fullscreen'];
 
         if (empty($settings['modeSwitch'])) {
             $toolbar = array_values(array_filter($toolbar, static fn($item) => $item !== 'edit-mode'));
-        }
-
-        if (($settings['fullStrategy'] ?? 'compat') !== 'off') {
-            $toolbar[] = 'fullscreen';
         }
 
         if (!empty($settings['outline'])) {
@@ -132,11 +126,9 @@ window.VditorRenewConfig = <?php echo $configJson; ?>;
                 }
             }
         }
-
         if (($settings['fullStrategy'] ?? 'compat') === 'off') {
-            $toolbar = array_values(array_filter($toolbar, static fn($item) => !(is_string($item) && $item === 'fullscreen')));
+            $toolbar = array_values(array_filter($toolbar, static fn($item) => $item !== 'fullscreen'));
         }
-
         return $toolbar;
     }
 

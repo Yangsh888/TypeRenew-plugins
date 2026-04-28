@@ -577,44 +577,32 @@ class Settings
         }
 
         if (preg_match('#^https?://#i', $value)) {
-            return self::sameSiteRelative($value);
+            return self::absoluteHttpUrl($value);
         }
 
         return '';
     }
 
-    private static function sameSiteRelative(string $value): string
+    private static function absoluteHttpUrl(string $value): string
     {
         $target = Common::parseUrl($value);
-        $site = Common::parseUrl(self::siteUrl());
-
-        if ($target === [] || $site === []) {
+        if ($target === []) {
             return '';
         }
 
+        $scheme = strtolower((string) ($target['scheme'] ?? ''));
         $targetHost = strtolower((string) ($target['host'] ?? ''));
-        $siteHost = strtolower((string) ($site['host'] ?? ''));
-        if ($targetHost === '' || $siteHost === '' || $targetHost !== $siteHost) {
-            return '';
-        }
-
-        $targetScheme = strtolower((string) ($target['scheme'] ?? ''));
-        $siteScheme = strtolower((string) ($site['scheme'] ?? ''));
-        if ($targetScheme !== '' && $siteScheme !== '' && $targetScheme !== $siteScheme) {
+        if ($targetHost === '' || !in_array($scheme, ['http', 'https'], true)) {
             return '';
         }
 
         $targetPort = (int) ($target['port'] ?? 0);
-        $sitePort = (int) ($site['port'] ?? 0);
-        if ($targetPort > 0 && $sitePort > 0 && $targetPort !== $sitePort) {
-            return '';
-        }
-
         $path = '/' . ltrim((string) ($target['path'] ?? '/'), '/');
         $path = preg_replace('#/+#', '/', $path) ?? '/';
         $query = isset($target['query']) ? '?' . (string) $target['query'] : '';
         $fragment = isset($target['fragment']) ? '#' . (string) $target['fragment'] : '';
+        $port = $targetPort > 0 ? ':' . $targetPort : '';
 
-        return $path . $query . $fragment;
+        return $scheme . '://' . $targetHost . $port . $path . $query . $fragment;
     }
 }

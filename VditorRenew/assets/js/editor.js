@@ -6,19 +6,7 @@
         return;
     }
 
-    const resolveFullStrategy = (value) => {
-        if (value === true) {
-            return 'compat';
-        }
-        if (value === false) {
-            return 'off';
-        }
-
-        value = String(value || 'compat');
-        return ['compat', 'native', 'off'].includes(value) ? value : 'compat';
-    };
-
-    cfg.fullStrategy = resolveFullStrategy(cfg.fullStrategy);
+    cfg.fullStrategy = String(cfg.fullStrategy || 'compat') === 'off' ? 'off' : 'compat';
 
     const textarea = document.getElementById('text');
     if (!textarea) {
@@ -67,7 +55,6 @@
     const modeKey = 'trVditorMode';
     let editor = null;
     let currentMode = cfg.mode || 'ir';
-    let fullObserver = null;
     const editorHeight = Math.max(420, parseInt(cfg.editorHeight || 520, 10));
     let cacheId = String(cfg.cacheId || '');
     let draftCacheSessionKey = '';
@@ -78,12 +65,10 @@
     
     let draftSaveTimer = null;
     let allowDraftWrite = false;
-    let scrubLock = false;
     let cidEnsuring = false;
     const cidWaiters = [];
     const uploadQueue = [];
     let uploadWaitTimer = null;
-    const uploadingFiles = new Set();
     const dataImagePendingByName = new Map();
     const dataImageSeen = new Set();
     const uploadedAttachmentCids = new Set();
@@ -368,156 +353,6 @@
         return { head, def, id };
     };
 
-    const openInsertDialog = ({ title, url, isImage, prefer = 'ref' }) => {
-        const mask = document.createElement('div');
-        mask.className = 'tr-vditor-mask';
-
-        const dialog = document.createElement('div');
-        dialog.className = 'tr-vditor-dialog';
-
-        const hd = document.createElement('div');
-        hd.className = 'tr-vditor-dialog-hd';
-        hd.textContent = isImage ? '插入图片' : '插入链接';
-
-        const bd = document.createElement('div');
-        bd.className = 'tr-vditor-dialog-bd';
-
-        const labelUrl = document.createElement('label');
-        labelUrl.textContent = '链接';
-        const inputUrl = document.createElement('input');
-        inputUrl.type = 'text';
-        inputUrl.value = String(url || '');
-
-        const labelAlt = document.createElement('label');
-        labelAlt.textContent = isImage ? '图片描述' : '链接文本';
-        const inputAlt = document.createElement('input');
-        inputAlt.type = 'text';
-        inputAlt.value = String(title || '');
-
-        const opt = document.createElement('div');
-        opt.className = 'tr-vditor-dialog-opt';
-        const name = 'trVditorInsMode';
-        const optRef = document.createElement('label');
-        const radioRef = document.createElement('input');
-        radioRef.type = 'radio';
-        radioRef.name = name;
-        radioRef.value = 'ref';
-        radioRef.checked = prefer === 'ref';
-        optRef.appendChild(radioRef);
-        optRef.appendChild(document.createTextNode('引用式'));
-
-        const optInline = document.createElement('label');
-        const radioInline = document.createElement('input');
-        radioInline.type = 'radio';
-        radioInline.name = name;
-        radioInline.value = 'inline';
-        radioInline.checked = prefer === 'inline';
-        optInline.appendChild(radioInline);
-        optInline.appendChild(document.createTextNode('行内'));
-
-        opt.appendChild(optRef);
-        opt.appendChild(optInline);
-
-        bd.appendChild(labelUrl);
-        bd.appendChild(inputUrl);
-        bd.appendChild(labelAlt);
-        bd.appendChild(inputAlt);
-        bd.appendChild(opt);
-
-        const ft = document.createElement('div');
-        ft.className = 'tr-vditor-dialog-ft';
-        const btnCancel = document.createElement('button');
-        btnCancel.type = 'button';
-        btnCancel.className = 'btn';
-        btnCancel.textContent = '取消';
-        const btnOk = document.createElement('button');
-        btnOk.type = 'button';
-        btnOk.className = 'btn primary';
-        btnOk.textContent = '确定';
-
-        ft.appendChild(btnCancel);
-        ft.appendChild(btnOk);
-
-        dialog.appendChild(hd);
-        dialog.appendChild(bd);
-        dialog.appendChild(ft);
-        mask.appendChild(dialog);
-        document.body.appendChild(mask);
-
-        const close = () => {
-            mask.remove();
-        };
-
-        const submit = () => {
-            if (!editor) {
-                close();
-                return;
-            }
-            const finalUrl = String(inputUrl.value || '').trim();
-            if (!finalUrl) {
-                showNotice('链接不能为空', 'error');
-                return;
-            }
-            const finalAlt = String(inputAlt.value || '').trim() || (isImage ? 'image' : 'link');
-            const mode = (mask.querySelector('input[name="' + name + '"]:checked') || {}).value || 'ref';
-            if (mode === 'inline') {
-                editor.insertValue(mdInsertInline(finalAlt, finalUrl, !!isImage) + '\n');
-                syncValue(editor.getValue());
-                close();
-                return;
-            }
-
-            const current = editor.getValue();
-            const ref = mdInsertRef(finalAlt, finalUrl, !!isImage, current);
-            editor.insertValue(ref.head + '\n');
-            let next = editor.getValue();
-            const exists = new RegExp('^\\[' + ref.id + '\\]:\\s*', 'm').test(next);
-            if (!exists) {
-                next = next.replace(/\s*$/, '');
-                next += '\n\n' + ref.def + '\n';
-                editor.setValue(next);
-            }
-            syncValue(editor.getValue());
-            close();
-        };
-
-        btnCancel.addEventListener('click', close, { passive: true });
-        btnOk.addEventListener('click', submit);
-        mask.addEventListener('click', (e) => {
-            if (e.target === mask) {
-                close();
-            }
-        });
-        inputUrl.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                submit();
-            } else if (e.key === 'Escape') {
-                close();
-            }
-        });
-        inputAlt.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                submit();
-            } else if (e.key === 'Escape') {
-                close();
-            }
-        });
-
-        setTimeout(() => {
-            inputUrl.focus();
-            inputUrl.select();
-        }, 0);
-    };
-
-    const extractDataImage = (text) => {
-        const raw = String(text || '');
-        const m = raw.match(/data:image\/([a-z0-9.+-]+);base64,([a-z0-9+/=\s]+)/i);
-        if (!m) {
-            return null;
-        }
-        return { ext: m[1], base64: m[2].replace(/\s+/g, '') };
-    };
-
     const extractDataImageMarkdownAll = (markdown) => {
         const text = String(markdown || '');
         const re = /!\[([^\]]*)\]\(\s*data:image\/([a-z0-9.+-]+);base64,([\s\S]+?)\s*\)/ig;
@@ -551,6 +386,10 @@
         }
     };
 
+    const getWorkspace = () => window.Typecho && window.Typecho.writeWorkspace
+        ? window.Typecho.writeWorkspace
+        : null;
+
     const applyTheme = () => {
         if (!editor || !cfg.followTheme) {
             return;
@@ -559,39 +398,55 @@
         editor.setTheme(dark ? 'dark' : 'classic', dark ? 'dark' : 'light', 'github');
     };
 
-    const setFullscreen = (on) => {
-        if (cfg.fullStrategy !== 'compat') {
-            document.body.classList.remove('fullscreen');
-            document.body.classList.remove('tr-vditor-fullscreen');
-            document.body.style.overflow = '';
-            return;
-        }
-        document.body.classList.toggle('fullscreen', !!on);
-        document.body.classList.toggle('tr-vditor-fullscreen', !!on);
-        document.body.style.overflow = on ? 'hidden' : '';
+    const shellHeight = () => {
+        const workspace = getWorkspace();
+        const actionHeight = workspace && typeof workspace.actionHeight === 'function'
+            ? workspace.actionHeight()
+            : 72;
+        const top = host.getBoundingClientRect().top || 0;
+        return Math.max(editorHeight, Math.round(window.innerHeight - top - actionHeight - 24));
     };
 
-    const bindFullscreen = (attempt = 0) => {
-        if (cfg.fullStrategy !== 'compat' || !window.MutationObserver) {
-            return;
+    const syncShellFullscreen = (on) => {
+        const button = host.querySelector('.vditor-toolbar [data-type="fullscreen"]');
+        if (button) {
+            button.classList.toggle('tr-fullscreen-active', !!on);
+            button.setAttribute('aria-pressed', on ? 'true' : 'false');
         }
-        const root = host.classList.contains('vditor') ? host : host.querySelector('.vditor');
+
+        const root = host.querySelector('.vditor');
         if (!root) {
-            if (attempt < 10) {
-                window.setTimeout(() => bindFullscreen(attempt + 1), 60);
-            }
             return;
         }
-        if (fullObserver) {
-            fullObserver.disconnect();
-            fullObserver = null;
+
+        root.classList.remove('vditor--fullscreen');
+        root.style.height = on ? shellHeight() + 'px' : '';
+    };
+
+    const bindFullscreenButton = () => {
+        const toolbar = host.querySelector('.vditor-toolbar');
+        if (!toolbar) {
+            return;
         }
-        const sync = () => {
-            setFullscreen(root.classList.contains('vditor--fullscreen'));
-        };
-        sync();
-        fullObserver = new MutationObserver(sync);
-        fullObserver.observe(root, { attributes: true, attributeFilter: ['class'] });
+
+        const button = toolbar.querySelector('[data-type="fullscreen"]');
+        if (!button || cfg.fullStrategy === 'off' || button.dataset.trShellBound === '1') {
+            return;
+        }
+
+        button.dataset.trShellBound = '1';
+        button.setAttribute('aria-pressed', 'false');
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (typeof event.stopImmediatePropagation === 'function') {
+                event.stopImmediatePropagation();
+            }
+            const workspace = getWorkspace();
+            if (workspace && typeof workspace.toggleFullscreen === 'function') {
+                workspace.toggleFullscreen();
+            }
+        }, true);
     };
 
     const initModeSwitch = () => {
@@ -682,14 +537,12 @@
         },
         input: (md) => {
             syncValue(md);
-            
-            if (!scrubLock) {
-                const list = extractDataImageMarkdownAll(md);
-                if (list.length > 0) {
-                    uploadDataImages(list);
-                }
+
+            const list = extractDataImageMarkdownAll(md);
+            if (list.length > 0) {
+                uploadDataImages(list);
             }
-            
+
             if (allowDraftWrite && cfg.isNew && storage && cfg.localCache) {
                 if (draftSaveTimer) {
                     clearTimeout(draftSaveTimer);
@@ -714,22 +567,19 @@
                 syncValue(editor.getValue());
             }
             applyTheme();
+            bindFullscreenButton();
+            const workspace = getWorkspace();
+            syncShellFullscreen(!!(workspace && typeof workspace.isFullscreen === 'function' && workspace.isFullscreen()));
         }
     });
 
     const renderEditor = (value, convertLegacy) => {
-        setFullscreen(false);
-        if (fullObserver) {
-            fullObserver.disconnect();
-            fullObserver = null;
-        }
         if (editor) {
             editor.destroy();
             editor = null;
         }
         host.innerHTML = '';
         editor = new window.Vditor(host, getOptions(value, convertLegacy));
-        bindFullscreen();
     };
 
     const bindTheme = () => {
@@ -994,6 +844,19 @@
     bindSubmitGuard();
     bindAttachmentEvents();
     ensureMarkdownFlag();
+    const workspace = getWorkspace();
+    if (workspace && typeof workspace.isFullscreen === 'function') {
+        syncShellFullscreen(workspace.isFullscreen());
+        form.addEventListener('tr:fullscreen-change', (event) => {
+            syncShellFullscreen(!!(event.detail && event.detail.active));
+        });
+    }
+    window.addEventListener('resize', () => {
+        const workspace = getWorkspace();
+        if (workspace && typeof workspace.isFullscreen === 'function' && workspace.isFullscreen()) {
+            syncShellFullscreen(true);
+        }
+    });
     initDraftRestore();
 
     if (cfg.legacy === 'raw' && !cfg.isNew && !cfg.isMarkdown) {

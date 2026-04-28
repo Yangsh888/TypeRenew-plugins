@@ -121,7 +121,7 @@ class VditorRenew_Plugin implements PluginInterface
 
         $full = new Form\Element\Select(
             'fullStrategy',
-            ['compat' => _t('兼容桥接模式'), 'native' => _t('Vditor 原生模式'), 'off' => _t('禁用全屏按钮')],
+            ['compat' => _t('使用写作页全屏'), 'off' => _t('禁用全屏按钮')],
             (string) $defaults['fullStrategy'],
             _t('全屏策略')
         );
@@ -178,7 +178,8 @@ class VditorRenew_Plugin implements PluginInterface
         $dist = self::distDir();
         return is_file($dist . DIRECTORY_SEPARATOR . 'index.min.js')
             && is_file($dist . DIRECTORY_SEPARATOR . 'index.css')
-            && is_file($dist . DIRECTORY_SEPARATOR . 'js' . DIRECTORY_SEPARATOR . 'i18n' . DIRECTORY_SEPARATOR . 'zh_CN.js');
+            && is_file($dist . DIRECTORY_SEPARATOR . 'js' . DIRECTORY_SEPARATOR . 'i18n' . DIRECTORY_SEPARATOR . 'zh_CN.js')
+            && is_file($dist . DIRECTORY_SEPARATOR . 'css' . DIRECTORY_SEPARATOR . 'content-theme' . DIRECTORY_SEPARATOR . 'light.css');
     }
 
     private static function clearConfigCache(): void
@@ -268,7 +269,10 @@ class VditorRenew_Plugin implements PluginInterface
         }
 
         $fullStrategy = (string) ($settings['fullStrategy'] ?? 'compat');
-        if (!in_array($fullStrategy, ['compat', 'native', 'off'], true)) {
+        if ($fullStrategy === 'native') {
+            $fullStrategy = 'compat';
+        }
+        if (!in_array($fullStrategy, ['compat', 'off'], true)) {
             $fullStrategy = 'compat';
         }
 

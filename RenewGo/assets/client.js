@@ -34,7 +34,7 @@
                 if(!s){
                     continue;
                 }
-                if(h === s || h.endsWith("." + s)){
+                if(h !== s && h.endsWith("." + s)){
                     return true;
                 }
             }

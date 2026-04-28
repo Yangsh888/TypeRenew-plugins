@@ -1056,7 +1056,15 @@ HTML;
         $settings = Settings::normalize(['accessRedirect' => $uri]);
         $redirect = trim((string) ($settings['accessRedirect'] ?? ''));
 
-        return $redirect !== '' ? self::safeReturn($redirect) : '/';
+        if ($redirect === '') {
+            return '/';
+        }
+
+        if (preg_match('#^https?://#i', $redirect) === 1) {
+            return $redirect;
+        }
+
+        return self::safeReturn($redirect);
     }
 
     private static function ban(string $ip, int $ttl, string $reason): void
