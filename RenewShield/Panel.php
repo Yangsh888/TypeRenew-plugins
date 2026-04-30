@@ -23,21 +23,12 @@ $tabs = Settings::tabs();
 if (!in_array($currentTab, $tabs, true)) {
     $currentTab = 'global';
 }
-$insights = [];
-$health = [];
 $page = max(1, (int) $request->get('page', 1));
-$logs = [
-    'rows' => [],
-    'total' => 0,
-    'page' => $page,
-    'size' => (int) ($settings['panelSize'] ?? 10),
-];
+$pageSize = (int) ($settings['panelSize'] ?? 10);
 
-if ($currentTab === 'ops') {
-    $insights = Log::insights();
-    $health = Health::inspect($settings);
-    $logs = Log::search($filters, $page, (int) ($settings['panelSize'] ?? 10));
-}
+$insights = Log::insights();
+$health = Health::inspect($settings);
+$logs = Log::search($filters, $page, $pageSize);
 
 $saveUrl = Settings::actionUrl('save', true);
 $purgeUrl = Settings::actionUrl('purge_logs', true);
