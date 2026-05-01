@@ -5,7 +5,7 @@
  * @package VditorRenew
  * @author TypeRenew
  * @link https://www.typerenew.com/
- * @version 1.1.0
+ * @version 1.2.0
  * @since 1.4.1
  */
 if (!defined('__TYPECHO_ROOT_DIR__')) {
